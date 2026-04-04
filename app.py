@@ -90,7 +90,7 @@ if st.button("🚀 Tahminimi Veri Havuzuna Gönder"):
         save_to_csv(user_name, user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
         st.success(f"Teşekkürler {user_name}, tahminin başarıyla kaydedildi!")
 
-# --- 🛡️ YÖNETİCİ PANELİ (TEMİZLEME ÖZELLİKLİ) ---
+# --- 🛡️ YÖNETİCİ PANELİ (KESİN SİLME) ---
 st.sidebar.divider()
 st.sidebar.subheader("🔐 Yönetici Erişimi")
 sifre = st.sidebar.text_input("Yönetici Şifresi", type="password")
@@ -108,14 +108,19 @@ if sifre == "alper2026":
         c4.metric("Ort. Dolar Artışı", f"%{df['dolar_artis_beklentisi'].mean():.2f}")
         
         st.write("---")
-        st.subheader("📋 Kayıt Yönetimi (Troll Verileri Temizle)")
+        st.subheader("📋 Kayıt Yönetimi")
         
-        # İnteraktif Tablo (Düzenleme ve Silme için)
-        edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="data_editor")
+        # Tabloyu gösteriyoruz
+        st.dataframe(df, use_container_width=True)
         
-        if st.button("🗑️ Değişiklikleri Uygula ve Troll Kayıtları Sil"):
-            edited_df.to_csv(DB_FILE, index=False)
-            st.success("Veritabanı güncellendi! Silinen kayıtlar uçuruldu.")
+        # Silme Operasyonu
+        st.write("#### 🗑️ Veri Temizleme")
+        row_to_delete = st.number_input("Silmek istediğiniz satır numarası (En soldaki sayı):", min_value=0, max_value=len(df)-1, step=1)
+        
+        if st.button(f"❌ {row_to_delete} Numaralı Kaydı Kalıcı Olarak Sil"):
+            df = df.drop(df.index[row_to_delete])
+            df.to_csv(DB_FILE, index=False)
+            st.warning(f"{row_to_delete} numaralı kayıt silindi. Sayfa yenileniyor...")
             st.rerun()
 
         st.write("---")
