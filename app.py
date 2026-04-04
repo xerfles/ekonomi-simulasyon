@@ -34,6 +34,8 @@ GECMIS_VERILER = {
 st.set_page_config(page_title="Hanehalkı Beklenti Paneli", layout="wide")
 
 st.title("🏠 2026 Yılı Hanehalkı Enflasyon Beklenti Anketi")
+
+# Üst Bilgi Metrikleri
 inf_col1, inf_col2, inf_col3 = st.columns(3)
 inf_col1.warning(f"💵 **Güncel Dolar Kuru:** {GUNCEL_DOLAR_KURU} TL")
 inf_col2.info(f"📊 **Ocak-Mart (Gerçekleşen):** %{ILK_CEYREK_ENF}")
@@ -41,7 +43,15 @@ inf_col3.success(f"🎯 **TCMB Yıl Sonu Hedefi:** %{TCMB_2026_HEDEF}")
 
 st.divider()
 
-# --- 🎯 MOBİL UYUMLU GİRİŞ ALANI (ANA SAYFAYA TAŞINDI) ---
+# --- 📜 TARİHSEL VERİLER (YUKARI TAŞINDI) ---
+st.subheader("📜 Tarihsel Verilerle Ekonomi Karnesi (2022-2025)")
+st.write("Tahmininizi yapmadan önce geçmiş yıllardaki dolar ve enflasyon hareketlerini inceleyebilirsiniz:")
+hist_df = pd.DataFrame(GECMIS_VERILER).set_index("Yıl")
+st.table(hist_df)
+
+st.divider()
+
+# --- 🎯 SENARYO OLUŞTURMA ---
 st.subheader("⚙️ Kendi Senaryonuzu Oluşturun")
 c_user1, c_user2 = st.columns(2)
 
@@ -67,7 +77,7 @@ tahmini_dolar_sonu = GUNCEL_DOLAR_KURU * (1 + dolar_artis/100)
 
 st.divider()
 
-# --- 🏁 SONUÇLAR VE BUTON ---
+# --- 🏁 SONUÇLAR VE KAYDET BUTONU ---
 st.subheader("🏁 Tahmin Sonuçlarınız")
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("📊 Ocak-Mart (Net)", f"%{ILK_CEYREK_ENF}")
@@ -75,21 +85,16 @@ m2.metric("🔮 9 Aylık Beklentiniz", f"%{beklenti_9ay:.2f}")
 m3.metric("📈 Yıl Sonu Toplam", f"%{toplam_yıl_sonu:.2f}")
 m4.metric("💵 Yıl Sonu Dolar", f"{tahmini_dolar_sonu:.2f} TL")
 
-if st.button("🚀 TAHMİNİMİ VERİ HAVUZUNA GÖNDER", use_container_width=True):
+st.write("")
+# Buton daha belirgin ve yukarıda
+if st.button("💾 VERİLERİMİ KAYDET VE ANALİZE KATIL", use_container_width=True, type="primary"):
     if user_name.strip() == "":
         st.error("Lütfen isminizi giriniz!")
     else:
         save_to_csv(user_name, user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
-        st.success(f"Teşekkürler {user_name}, tahminin kaydedildi!")
+        st.success(f"Teşekkürler {user_name}, tahminin başarıyla kaydedildi!")
 
-st.divider()
-
-# Tarihsel Veri Tablosu
-st.subheader("📜 Tarihsel Verilerle Kıyaslama (2022-2025)")
-hist_df = pd.DataFrame(GECMIS_VERILER).set_index("Yıl")
-st.table(hist_df)
-
-# --- 🛡️ YÖNETİCİ PANELİ (SİDEBAR'IN EN ALTINA GİZLENDİ) ---
+# --- 🛡️ YÖNETİCİ PANELİ ---
 with st.sidebar:
     st.write("---" * 5)
     with st.expander("🔐 Admin Panel"):
