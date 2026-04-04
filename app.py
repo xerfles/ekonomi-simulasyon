@@ -74,6 +74,16 @@ m2.metric("🔮 Sizin 9 Aylık Beklentiniz", f"%{beklenti_9ay:.2f}")
 m3.metric("📈 Toplam Yıl Sonu Tahmininiz", f"%{toplam_yıl_sonu:.2f}")
 m4.metric("💵 Yıl Sonu Tahmini Dolar", f"{tahmini_dolar_sonu:.2f} TL", f"%{dolar_artis} Artış")
 
+# --- 🚀 YUKARI TAŞINAN KAYIT BUTONU ---
+st.write("")
+if st.button("🚀 TAHMİNİMİ VERİ HAVUZUNA GÖNDER"):
+    if user_name.strip() == "":
+        st.error("Lütfen devam etmek için kenar çubuğundan isminizi giriniz!")
+    else:
+        save_to_csv(user_name, user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
+        st.success(f"Teşekkürler {user_name}, tahminin başarıyla kaydedildi!")
+st.write("")
+
 st.divider()
 
 # Tarihsel Veri Tablosu
@@ -81,16 +91,7 @@ st.subheader("📜 Tarihsel Verilerle Kıyaslama (2022-2025)")
 hist_df = pd.DataFrame(GECMIS_VERILER).set_index("Yıl")
 st.table(hist_df)
 
-st.divider()
-
-if st.button("🚀 Tahminimi Veri Havuzuna Gönder"):
-    if user_name.strip() == "":
-        st.error("Lütfen devam etmek için bir isim giriniz!")
-    else:
-        save_to_csv(user_name, user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
-        st.success(f"Teşekkürler {user_name}, tahminin başarıyla kaydedildi!")
-
-# --- 🛡️ YÖNETİCİ PANELİ (HATA KORUMALI) ---
+# --- 🛡️ YÖNETİCİ PANELİ ---
 st.sidebar.divider()
 st.sidebar.subheader("🔐 Yönetici Erişimi")
 sifre = st.sidebar.text_input("Yönetici Şifresi", type="password")
@@ -100,10 +101,7 @@ if sifre == "alper2026":
     st.header("📂 Detaylı Analiz Paneli")
     if os.path.exists(DB_FILE):
         df = pd.read_csv(DB_FILE)
-        
-        # --- 🛡️ KRİTİK DÜZELTME: Veri var mı kontrolü ---
         if not df.empty:
-            # Üst Metrikler
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Toplam Katılım", f"{len(df)} Kişi")
             c2.metric("Ort. Enflasyon (9 Ay)", f"%{df['beklenti_9ay'].mean():.2f}")
@@ -134,6 +132,4 @@ if sifre == "alper2026":
                 st.write("**😨 En Çok Korkulanlar**")
                 st.bar_chart(df['en_cok_korkulan'].value_counts())
         else:
-            st.warning("⚠️ Veritabanı şu an boş. Analiz gösterilemiyor.")
-    else:
-        st.info("📂 Henüz veritabanı dosyası oluşturulmadı.")
+            st.warning("⚠️ Veritabanı şu an boş.")
