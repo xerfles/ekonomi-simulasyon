@@ -21,6 +21,13 @@ def save_survey(profil, enflasyon, korku):
     conn.commit()
     conn.close()
 
+def delete_record(tarih_id):
+    conn = sqlite3.connect('beklenti_havuzu.db')
+    c = conn.cursor()
+    c.execute("DELETE FROM anket WHERE tarih = ?", (tarih_id,))
+    conn.commit()
+    conn.close()
+
 # --- 📡 2. CANLI VERİ ---
 def get_live_usd():
     try:
@@ -31,7 +38,7 @@ def get_live_usd():
     except: return 44.92 
 
 # --- ⚙️ 3. AYARLAR ---
-st.set_page_config(page_title="Ekonomi Analiz Paneli", layout="wide")
+st.set_page_config(page_title="Hanehalkı Ekonomi Paneli", layout="wide")
 init_db()
 CANLI_DOLAR = get_live_usd()
 BAZ_ENFLASYON = 14.40 
@@ -68,7 +75,7 @@ tahmin = BAZ_ENFLASYON + hissedilen_ek
 # --- 📊 6. SONUÇLAR ---
 st.divider()
 c1, c2, c3 = st.columns(3)
-with c1: st.metric("📊 Profil", user_profile)
+with c1: st.metric("📊 Seçilen Profil", user_profile)
 with c2: st.metric("📈 Hissedilen Enflasyon", f"%{tahmin:.2f}")
 with c3: st.metric("🛡️ Temel Endişe", korku_faktoru)
 
@@ -77,36 +84,56 @@ st.divider()
 st.subheader("🔍 Pilot Çalışma: Veri Toplama")
 if st.button("Tahminimi Havuza Gönder"):
     save_survey(user_profile, tahmin, korku_faktoru)
-    st.success("Kaydedildi!")
+    st.success("Kaydedildi! Verileriniz havuza eklendi.")
 
-# --- 🛡️ 8. GİZLİ ADMİN PANELİ (SADECE SENİN İÇİN) ---
+# --- 🛡️ 8. GİZLİ YÖNETİCİ GİRİŞİ ---
 st.sidebar.divider()
 with st.sidebar.expander("🔐 Yönetici Girişi"):
     sifre = st.text_input("Şifre Girin", type="password")
-    if sifre == "alper2026": # Şifren burada kanka
-        st.success("Giriş Yapıldı")
-        admin_modu = True
-    else:
-        admin_modu = False
+    admin_modu = (sifre == "alper2026")
 
-# --- 📈 9. GÖRÜNÜM ---
+# --- 📈 9. YÖNETİCİ ÖZET RAPORU ---
 if admin_modu:
     st.divider()
-    st.subheader("📂 Yönetici Veri İzleme Paneli")
+    st.header("📂 Yönetici Analiz Paneli")
+    
     conn = sqlite3.connect('beklenti_havuzu.db')
-    df_res = pd.read_sql_query("SELECT * FROM anket", conn)
+    df = pd.read_sql_query("SELECT * FROM anket", conn)
     conn.close()
     
-    if not df_res.empty:
-        st.write("### Tüm Ham Veriler (Excel Formatında)")
-        st.dataframe(df_res) # Tüm tabloyu burada göreceksin
-        
-        st.write("### Hızlı İstatistikler")
-        cl, cr = st.columns(2)
-        cl.bar_chart(df_res.groupby("profil")["beklenen_enflasyon"].mean())
-        cr.bar_chart(df_res["en_cok_korkulan"].value_counts())
+    if not df.empty:
+        # ÜST ÖZET KARTLARI
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            genel_ort = df["beklenen_enflasyon"].mean()
+            st.metric("🌍 Genel Beklenti Ort.", f"%{genel_ort:.2f}")
+        with m2:
+            populer_grup = df["profil"].value_counts().idxmax()
+            st.metric("🏆 En Çok Katılım", populer_grup)
+        with m3:
+            ana_korku = df["en_cok_korkulan"].value_counts().idxmax()
+            st.metric("🚨 En Büyük Korku", ana_korku)
+
+        # GRAFİKSEL ANALİZ
+        st.divider()
+        g1, g2 = st.columns(2)
+        with g1:
+            st.write("### 📈 Gruplara Göre Enflasyon Beklentisi")
+            st.bar_chart(df.groupby("profil")["beklenen_enflasyon"].mean())
+        with g2:
+            st.write("### 👥 Katılımcı Dağılımı")
+            st.bar_chart(df["profil"].value_counts())
+
+        # VERİ TEMİZLEME VE LİSTE
+        st.divider()
+        with st.expander("🗑️ Veri Listesi ve Kayıt Silme"):
+            st.dataframe(df, use_container_width=True)
+            silinecek_tarih = st.selectbox("Silmek istediğiniz kaydın tarihini seçin:", df["tarih"].tolist())
+            if st.button("Kaydı Kalıcı Olarak Sil"):
+                delete_record(silinecek_tarih)
+                st.warning("Kayıt silindi, yenileniyor...")
+                st.rerun()
     else:
-        st.info("Henüz veri yok.")
+        st.info("Henüz analiz edilecek veri toplanmadı.")
 else:
-    # Admin değilse sadece boş bir teşekkür mesajı görsün veya hiçbir şey görmesin
-    st.caption("Veriler toplandıkça analiz sonuçları hoca ile paylaşılacaktır.")
+    st.caption("Pilot çalışma verileri yönetici tarafından analiz edilmektedir.")
