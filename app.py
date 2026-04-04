@@ -38,7 +38,7 @@ def get_live_usd():
     except: return 44.92 
 
 # --- ⚙️ 3. AYARLAR ---
-st.set_page_config(page_title="Hanehalkı Ekonomi Paneli", layout="wide")
+st.set_page_config(page_title="Ekonomi Analiz Paneli", layout="wide")
 init_db()
 CANLI_DOLAR = get_live_usd()
 BAZ_ENFLASYON = 14.40 
@@ -84,7 +84,7 @@ st.divider()
 st.subheader("🔍 Pilot Çalışma: Veri Toplama")
 if st.button("Tahminimi Havuza Gönder"):
     save_survey(user_profile, tahmin, korku_faktoru)
-    st.success("Kaydedildi! Verileriniz havuza eklendi.")
+    st.success("Kaydedildi! Verileriniz güvenle sisteme eklendi.")
 
 # --- 🛡️ 8. GİZLİ YÖNETİCİ GİRİŞİ ---
 st.sidebar.divider()
@@ -92,10 +92,10 @@ with st.sidebar.expander("🔐 Yönetici Girişi"):
     sifre = st.text_input("Şifre Girin", type="password")
     admin_modu = (sifre == "alper2026")
 
-# --- 📈 9. YÖNETİCİ ÖZET RAPORU ---
+# --- 📉 9. SADECE YÖNETİCİYE ÖZEL ANALİZ ---
 if admin_modu:
     st.divider()
-    st.header("📂 Yönetici Analiz Paneli")
+    st.header("📂 Yönetici Özel Analiz Raporu")
     
     conn = sqlite3.connect('beklenti_havuzu.db')
     df = pd.read_sql_query("SELECT * FROM anket", conn)
@@ -106,34 +106,38 @@ if admin_modu:
         m1, m2, m3 = st.columns(3)
         with m1:
             genel_ort = df["beklenen_enflasyon"].mean()
-            st.metric("🌍 Genel Beklenti Ort.", f"%{genel_ort:.2f}")
+            st.metric("🌍 Toplum Beklentisi (Ort.)", f"%{genel_ort:.2f}")
         with m2:
             populer_grup = df["profil"].value_counts().idxmax()
-            st.metric("🏆 En Çok Katılım", populer_grup)
+            st.metric("🏆 En Aktif Katılımcı", populer_grup)
         with m3:
             ana_korku = df["en_cok_korkulan"].value_counts().idxmax()
-            st.metric("🚨 En Büyük Korku", ana_korku)
+            st.metric("🚨 Genel Risk Odağı", ana_korku)
 
-        # GRAFİKSEL ANALİZ
+        # GRAFİKLER
         st.divider()
         g1, g2 = st.columns(2)
         with g1:
-            st.write("### 📈 Gruplara Göre Enflasyon Beklentisi")
+            st.write("### 📈 Grupların Tahmin Ortalamaları")
             st.bar_chart(df.groupby("profil")["beklenen_enflasyon"].mean())
         with g2:
-            st.write("### 👥 Katılımcı Dağılımı")
+            st.write("### 👥 Katılım Yoğunluğu (Kişi)")
             st.bar_chart(df["profil"].value_counts())
+            
+        st.write("### 🚨 Korku Dağılım Analizi")
+        st.bar_chart(df["en_cok_korkulan"].value_counts())
 
-        # VERİ TEMİZLEME VE LİSTE
+        # VERİ LİSTESİ VE TEMİZLEME
         st.divider()
-        with st.expander("🗑️ Veri Listesi ve Kayıt Silme"):
+        with st.expander("🗑️ Ham Veri Listesi ve Kayıt Silme"):
             st.dataframe(df, use_container_width=True)
             silinecek_tarih = st.selectbox("Silmek istediğiniz kaydın tarihini seçin:", df["tarih"].tolist())
             if st.button("Kaydı Kalıcı Olarak Sil"):
                 delete_record(silinecek_tarih)
-                st.warning("Kayıt silindi, yenileniyor...")
+                st.warning("Kayıt silindi, sayfa yenileniyor...")
                 st.rerun()
     else:
-        st.info("Henüz analiz edilecek veri toplanmadı.")
+        st.info("Henüz analiz edilecek veri toplanmadı. Birkaç giriş yapıp tekrar deneyin.")
 else:
-    st.caption("Pilot çalışma verileri yönetici tarafından analiz edilmektedir.")
+    # Kullanıcı yönetici değilse hiçbir istatistik görmez
+    st.info("💡 **Bilgi:** Pilot çalışma verileri anonim olarak toplanmaktadır. Analiz sonuçları sadece yönetici yetkisiyle görüntülenebilir.")
