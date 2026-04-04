@@ -43,7 +43,6 @@ st.divider()
 
 # --- 🕹️ KENAR ÇUBUĞU ---
 st.sidebar.header("👤 Katılımcı Bilgisi")
-# Sadece isim alıyoruz, soyadı ibaresini kaldırdım
 user_name = st.sidebar.text_input("İsminiz (Veya Takma Adınız):", placeholder="Örn: Alper")
 
 st.sidebar.divider()
@@ -84,7 +83,6 @@ st.table(hist_df)
 
 st.divider()
 
-# Kayıt Butonu
 if st.button("🚀 Tahminimi Veri Havuzuna Gönder"):
     if user_name.strip() == "":
         st.error("Lütfen devam etmek için bir isim giriniz!")
@@ -92,7 +90,7 @@ if st.button("🚀 Tahminimi Veri Havuzuna Gönder"):
         save_to_csv(user_name, user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
         st.success(f"Teşekkürler {user_name}, tahminin başarıyla kaydedildi!")
 
-# --- 🛡️ YÖNETİCİ PANELİ ---
+# --- 🛡️ YÖNETİCİ PANELİ (TEMİZLEME ÖZELLİKLİ) ---
 st.sidebar.divider()
 st.sidebar.subheader("🔐 Yönetici Erişimi")
 sifre = st.sidebar.text_input("Yönetici Şifresi", type="password")
@@ -110,9 +108,16 @@ if sifre == "alper2026":
         c4.metric("Ort. Dolar Artışı", f"%{df['dolar_artis_beklentisi'].mean():.2f}")
         
         st.write("---")
-        st.subheader("📋 Katılımcı Listesi (Geniş Görünüm)")
-        st.dataframe(df, use_container_width=True) 
+        st.subheader("📋 Kayıt Yönetimi (Troll Verileri Temizle)")
         
+        # İnteraktif Tablo (Düzenleme ve Silme için)
+        edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic", key="data_editor")
+        
+        if st.button("🗑️ Değişiklikleri Uygula ve Troll Kayıtları Sil"):
+            edited_df.to_csv(DB_FILE, index=False)
+            st.success("Veritabanı güncellendi! Silinen kayıtlar uçuruldu.")
+            st.rerun()
+
         st.write("---")
         st.subheader("📊 Grupların Beklenti Ortalamaları")
         st.bar_chart(df.groupby("profil")["toplam_yıl_sonu"].mean())
