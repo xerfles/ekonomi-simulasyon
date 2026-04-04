@@ -17,12 +17,11 @@ def save_to_csv(profil, beklenti_9ay, toplam, dolar_artis, korku):
     else:
         new_data.to_csv(DB_FILE, mode='a', index=False, header=False)
 
-# --- 📊 GÜNCEL EKONOMİK VERİLER (5 Nisan 2026) ---
+# --- 📊 GÜNCEL EKONOMİK VERİLER ---
 GUNCEL_DOLAR_KURU = 44.92
 ILK_CEYREK_ENF = 14.40
 TCMB_2026_HEDEF = 22.0
 
-# Gelişmiş Tarihsel Veri Seti
 GECMIS_VERILER = {
     "Yıl": ["2022", "2023", "2024", "2025"],
     "Enflasyon (%)": ["%64.27", "%64.77", "%44.81", "%32.10"],
@@ -34,11 +33,10 @@ GECMIS_VERILER = {
 # --- ⚙️ SAYFA AYARLARI ---
 st.set_page_config(page_title="Hanehalkı Beklenti Paneli", layout="wide")
 
-# Üst Bilgi Alanı
 st.title("🏠 2026 Yılı Hanehalkı Enflasyon Beklenti Anketi")
 inf_col1, inf_col2, inf_col3 = st.columns(3)
 inf_col1.warning(f"💵 **Güncel Dolar Kuru:** {GUNCEL_DOLAR_KURU} TL")
-inf_col2.info(f"📊 **İlk Çeyrek Enflasyon:** %{ILK_CEYREK_ENF}")
+inf_col2.info(f"📊 **Ocak-Mart Dönemi (Gerçekleşen):** %{ILK_CEYREK_ENF}")
 inf_col3.success(f"🎯 **TCMB Yıl Sonu Hedefi:** %{TCMB_2026_HEDEF}")
 
 st.divider()
@@ -64,35 +62,48 @@ beklenti_9ay = (dolar_artis * w[0] + gida * w[1] + kira * w[2] + ulasim * w[3] +
 toplam_yıl_sonu = ILK_CEYREK_ENF + beklenti_9ay
 
 # --- 🏁 ANA EKRAN ---
-# Özet Metrikler
 st.subheader("🏁 Tahmin Sonuçlarınız")
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("9 Aylık Beklenti", f"%{beklenti_9ay:.2f}")
-m2.metric("Yıl Sonu Toplam", f"%{toplam_yıl_sonu:.2f}")
-m3.metric("Tahmini Dolar", f"{GUNCEL_DOLAR_KURU * (1 + dolar_artis/100):.2f} TL")
-sapma = toplam_yıl_sonu - TCMB_2026_HEDEF
-m4.metric("Hedef Sapması", f"{sapma:+.2f} Puan", delta_color="inverse")
+# Hedef sapması kaldırıldı, 3 kolon yapıldı
+m1, m2, m3 = st.columns(3)
+m1.metric("📊 Ocak-Mart Dönemi (Gerçekleşen)", f"%{ILK_CEYREK_ENF}")
+m2.metric("🔮 Sizin 9 Aylık Beklentiniz", f"%{beklenti_9ay:.2f}")
+m3.metric("📈 Toplam Yıl Sonu Tahmininiz", f"%{toplam_yıl_sonu:.2f}")
 
 st.divider()
 
 # Tarihsel Veri Tablosu
 st.subheader("📜 Tarihsel Verilerle Kıyaslama (2022-2025)")
-st.write("Aşağıdaki tablo, geçmiş yıllardaki dolar ve enflasyon hareketlerini özetlemektedir:")
 hist_df = pd.DataFrame(GECMIS_VERILER).set_index("Yıl")
 st.table(hist_df)
 
 st.divider()
 
-# Kayıt
 if st.button("🚀 Tahminimi Veri Havuzuna Gönder"):
     save_to_csv(user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
-    st.success("Verileriniz başarıyla kaydedildi. Analize katkınız için teşekkürler!")
+    st.success("Veriler kaydedildi!")
 
-# --- 🛡️ YÖNETİCİ PANELİ ---
+# --- 🛡️ GENİŞ YÖNETİCİ PANELİ ---
 st.sidebar.divider()
-with st.sidebar.expander("🔐 Yönetici"):
-    if st.text_input("Şifre", type="password") == "alper2026":
+with st.sidebar.expander("🔐 Yönetici Girişi"):
+    sifre = st.text_input("Şifre", type="password")
+    if sifre == "alper2026":
+        st.divider()
+        st.header("📂 Detaylı Analiz Paneli")
         if os.path.exists(DB_FILE):
             df = pd.read_csv(DB_FILE)
-            st.write(f"**Toplam Katılım:** {len(df)}")
-            st.dataframe(df)
+            
+            # Üst Özet Kartları
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Toplam Katılım", f"{len(df)} Kişi")
+            c2.metric("Ort. Beklenti (9 Ay)", f"%{df['beklenti_9ay'].mean():.2f}")
+            c3.metric("Ort. Yıl Sonu Tahmini", f"%{df['toplam_yıl_sonu'].mean():.2f}")
+            
+            st.write("---")
+            st.write("#### 📋 Tüm Veritabanı (Geniş Görünüm)")
+            # Tabloyu genişlettik
+            st.dataframe(df, use_container_width=True)
+            
+            st.write("#### 📊 Grupların Beklenti Ortalamaları")
+            st.bar_chart(df.groupby("profil")["toplam_yıl_sonu"].mean())
+        else:
+            st.info("Veri yok.")
