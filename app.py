@@ -18,11 +18,11 @@ def save_to_csv(profil, beklenti_9ay, toplam, dolar_tahmin, korku):
         new_data.to_csv(DB_FILE, mode='a', index=False, header=False)
 
 # --- 📊 RESMİ EKONOMİK VERİLER (2026 BAŞI) ---
-ILK_CEYREK_GERCEKLESEN = 14.40  # Ocak-Şubat-Mart Toplam Enflasyon
-TCMB_2026_HEDEF = 22.0          # Merkez Bankası Yıl Sonu Enflasyon Hedefi
-GUNCEL_DOLAR = 44.92            # Nisan 2026 başı piyasa kuru
+ILK_CEYREK_GERCEKLESEN = 14.40  # Ocak-Mart Toplam Enflasyon
+TCMB_2026_HEDEF = 22.0          # TCMB Yıl Sonu Hedefi
+GUNCEL_DOLAR = 44.92            # Nisan 2026 piyasa kuru
 
-# Geçmiş Yıllar Veri Seti
+# Geçmiş Yıllar Veri Seti (2022 Verisi Güncellendi)
 GECMIS_VERILER = {
     "Yıl": ["2022", "2023", "2024", "2025"],
     "Enflasyon (%)": [64.27, 64.77, 44.81, 32.10],
@@ -38,7 +38,7 @@ st.markdown(f"""
 TCMB'nin yıl sonu hedefi ise **%{TCMB_2026_HEDEF}**. Sizin tahmininiz nedir?
 """)
 
-# --- 🕹️ KENAR ÇUBUĞU: TAHMİN GİRİŞİ ---
+# --- 🕹️ KENAR ÇUBUĞU ---
 st.sidebar.header("🎯 Tahmin Parametreleriniz")
 user_profile = st.sidebar.selectbox("Sosyal Profiliniz:", ["Öğrenci", "Emekli", "Çalışan", "Kamu Personeli", "Esnaf"])
 
@@ -68,13 +68,12 @@ c_main, c_side = st.columns([2, 1])
 with c_main:
     st.subheader("🏁 Beklenti ve Hedef Kıyaslaması")
     m1, m2, m3 = st.columns(3)
-    m1.metric("📊 İlk Çeyrek (Gerçekleşen)", f"%{ILK_CEYREK_GERCEKLESEN}")
+    m1.metric("📊 İlk Çeyrek (Olan)", f"%{ILK_CEYREK_GERCEKLESEN}")
     m2.metric("🔮 Sizin 9 Aylık Tahmininiz", f"%{beklenti_9ay:.2f}")
     
     sapma = toplam_yıl_sonu - TCMB_2026_HEDEF
-    m3.metric("📈 Toplam Yıl Sonu Beklentiniz", f"%{toplam_yıl_sonu:.2f}", f"{sapma:+.2f} Hedef Sapması", delta_color="inverse")
+    m3.metric("📈 Yıl Sonu Toplam Beklentiniz", f"%{toplam_yıl_sonu:.2f}", f"{sapma:+.2f} Hedef Sapması", delta_color="inverse")
 
-    # Geçmiş Yıl Enflasyon Grafiği
     st.write("#### 📜 Yıllık Enflasyon Trendi (2022-2026)")
     enf_hist_df = pd.DataFrame({
         "Yıl": GECMIS_VERILER["Yıl"] + ["2026 (Siz)"],
@@ -93,7 +92,7 @@ with c_side:
         "Dolar (TL)": GECMIS_VERILER["Dolar Sonu (TL)"] + [dolar_tahmin]
     })
     st.line_chart(dolar_hist_df.set_index("Yıl"))
-    st.caption("Geçmiş yıl sonu kapanış kurları ve sizin beklentiniz.")
+    st.caption("Geçmiş yıl sonu kurları ve sizin beklentiniz.")
 
 # --- 🛡️ YÖNETİCİ PANELİ ---
 st.sidebar.divider()
