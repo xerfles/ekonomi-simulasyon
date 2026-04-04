@@ -5,24 +5,23 @@ import re
 import sqlite3
 from datetime import datetime
 
-# --- 🗄️ 1. VERİ TABANI AYARI (GİZLİ SİLAH) ---
+# --- 🗄️ 1. VERİ TABANI ---
 def init_db():
-    conn = sqlite3.connect('ekonomi_verileri.db')
+    conn = sqlite3.connect('hanehalkı_beklenti.db')
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS tahminler 
-                 (tarih TEXT, dolar_tahmin REAL, enflasyon_tahmin REAL, faiz_tahmin REAL)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS anket 
+                 (tarih TEXT, profil TEXT, beklenen_enflasyon REAL, en_cok_korkulan TEXT)''')
     conn.commit()
     conn.close()
 
-def save_prediction(dolar, enf, faiz):
-    conn = sqlite3.connect('ekonomi_verileri.db')
+def save_survey(profil, enflasyon, korku):
+    conn = sqlite3.connect('hanehalkı_beklenti.db')
     c = conn.cursor()
-    c.execute("INSERT INTO tahminler VALUES (?, ?, ?, ?)", 
-              (datetime.now().strftime("%Y-%m-%d %H:%M"), dolar, enf, faiz))
+    c.execute("INSERT INTO anket VALUES (?, ?, ?, ?)", (datetime.now().strftime("%Y-%m-%d %H:%M"), profil, enflasyon, korku))
     conn.commit()
     conn.close()
 
-# --- 📡 2. CANLI VERİ ÇEKME ---
+# --- 📡 2. CANLI VERİ ---
 def get_live_usd():
     try:
         url = "https://www.google.com/finance/quote/USD-TRY"
@@ -31,78 +30,85 @@ def get_live_usd():
         return float(match.group(1).replace(",", ""))
     except: return 44.92 
 
-# --- ⚙️ 3. ANA AYARLAR ---
-st.set_page_config(page_title="AR-GE: Ekonomi Strateji Matrisi", layout="wide")
+# --- ⚙️ 3. AYARLAR ---
+st.set_page_config(page_title="Hanehalkı Ekonomi Simülatörü", layout="wide")
 init_db()
 CANLI_DOLAR = get_live_usd()
-BAZ_ENFLASYON = 14.40   
-RESMI_HEDEF = 22.0      
-MEVCUT_FAIZ = 37.0      
+BAZ_ENFLASYON = 14.40 
 
-st.title("🏛️ Makroekonomik Karar Destek Sistemi (V2.0-Beta)")
-st.caption("TÜBİTAK 2209-A Proje Taslağı | Gelişmiş Enflasyon Simülatörü")
+st.title("🏠 Hanehalkı Yaşam Maliyeti ve Enflasyon Simülatörü")
+st.markdown("Bu çalışma, farklı toplum kesimlerinin nisan-aralık dönemine dair ekonomik beklentilerini ölçmek için tasarlanmıştır.")
 
-# --- 🕹️ 4. GELİŞMİŞ KONTROL PANELİ ---
-st.sidebar.header("🕹️ Senaryo Parametreleri")
+# --- 🕹️ 4. KULLANICI PROFİLİ VE GİRDİLER ---
+st.sidebar.header("👤 Profilinizi Belirleyin")
+user_profile = st.sidebar.selectbox("Hangi gruptasınız?", ["Öğrenci", "Emekli", "Beyaz Yakalı (Özel Sektör)", "Memur", "Esnaf/İşletme Sahibi"])
 
-with st.sidebar.expander("💸 Döviz & Dışsal Şoklar", expanded=True):
-    kur = st.slider("Kur Değişimi (%)", -10, 100, 0)
-    fed = st.slider("Fed Faiz Etkisi (Puan)", -2, 5, 0)
+st.sidebar.divider()
+st.sidebar.header("📉 Yaşam Maliyeti Tahmininiz")
+gida_artisi = st.sidebar.slider("Market/Pazar Alışverişi Artışı (%)", 0, 100, 0)
+kira_artisi = st.sidebar.slider("Kira/Konut Gideri Artışı (%)", 0, 100, 0)
+ulasim_artisi = st.sidebar.slider("Ulaşım/Yakıt Artışı (%)", 0, 100, 0)
+diger_artisi = st.sidebar.slider("Giyim/Eğlence/Diğer Artışı (%)", 0, 100, 0)
 
-with st.sidebar.expander("🥗 Gıda & Tarım Maliyetleri"):
-    gubre = st.slider("Gübre/Mazot Maliyeti (%)", 0, 100, 0)
-    araci = st.slider("Aracı Kâr Marjı (%)", 0, 50, 0)
+korku_faktoru = st.sidebar.selectbox("Sizi en çok hangi zam korkutuyor?", ["Gıda", "Kira", "Akaryakıt", "Eğitim/Sağlık"])
 
-with st.sidebar.expander("🏦 Para & Maliye Politikası"):
-    faiz_hamlesi = st.slider("Faiz Değişimi (Puan)", -20, 20, 0)
-    vergi = st.slider("Dolaylı Vergi Yükü (%)", 0, 50, 0)
+# --- 🧮 5. PROFİLE ÖZEL HESAPLAMA (AĞIRLIKLANDIRMA) ---
+# Gruplara göre harcama sepeti ağırlıkları (TÜİK ve Saha Araştırması Bazlı)
+weights = {
+    "Öğrenci": {"gida": 0.30, "kira": 0.40, "ulasim": 0.20, "diger": 0.10},
+    "Emekli": {"gida": 0.50, "kira": 0.20, "ulasim": 0.10, "diger": 0.20},
+    "Beyaz Yakalı (Özel Sektör)": {"gida": 0.25, "kira": 0.35, "ulasim": 0.20, "diger": 0.20},
+    "Memur": {"gida": 0.30, "kira": 0.30, "ulasim": 0.20, "diger": 0.20},
+    "Esnaf/İşletme Sahibi": {"gida": 0.20, "kira": 0.30, "ulasim": 0.30, "diger": 0.20}
+}
 
-with st.sidebar.expander("👥 Sosyal Faktörler"):
-    ucret = st.slider("Asgari Ücret/Maaş Zammı (%)", 0, 100, 0)
-    beklenti = st.slider("Hanehalkı Enflasyon Beklentisi (%)", 0, 50, 0)
+w = weights[user_profile]
+hissedilen_ek_enflasyon = (gida_artisi * w["gida"]) + (kira_artisi * w["kira"]) + (ulasim_artisi * w["ulasim"]) + (diger_artisi * w["diger"])
+yıl_sonu_tahmini = BAZ_ENFLASYON + hissedilen_ek_enflasyon
 
-# --- 🧮 5. AR-GE HESAP MOTORU (GEÇİŞKENLİK ANALİZİ) ---
-# Katsayılar akademik literatürden (Pass-through) optimize edildi
-e_kur = (kur * 0.38) + (fed * 0.12)
-e_gida = (gubre * 0.15) + (araci * 0.10)
-e_mali = (vergi * 0.18) + (faiz_hamlesi * -0.22) # Faiz negatif etkiler
-e_sosyal = (ucret * 0.25) + (beklenti * 0.20)
-
-ek_yuk = e_kur + e_gida + e_mali + e_sosyal
-toplam_enf = BAZ_ENFLASYON + ek_yuk
-tahmini_dolar = CANLI_DOLAR * (1 + kur/100)
-
-# --- 📊 6. DASHBOARD ---
+# --- 📊 6. SONUÇLAR ---
 st.divider()
-col1, col2, col3, col4 = st.columns(4)
+c1, c2, c3 = st.columns(3)
 
-col1.metric("🎯 Hedef", f"%{RESMI_HEDEF}")
-col2.metric("📈 Yıl Sonu Tahmini", f"%{toplam_enf:.2f}", f"{toplam_enf-RESMI_HEDEF:.2f} Sapma", delta_color="inverse")
-col3.metric("💵 Tahmini Dolar", f"{tahmini_dolar:.2f} TL")
-col4.metric("🏦 Politika Faizi", f"%{MEVCUT_FAIZ + faiz_hamlesi}")
+with c1:
+    st.metric("📊 Sizin Grubunuz", user_profile)
+    st.caption(f"Sepet Ağırlığı: Gıda %{w['gida']*100:.0f}, Kira %{w['kira']*100:.0f}")
 
-# --- 📈 7. ANALİZ VE KAYIT ---
+with c2:
+    st.metric("📈 Hissedilen Yıl Sonu Enflasyonu", f"%{yıl_sonu_tahmini:.2f}")
+    st.caption("Nisan-Aralık Beklentiniz Dahil")
+
+with c3:
+    st.metric("🛡️ En Büyük Risk", korku_faktoru)
+    st.caption("Kişisel Endişe Odağı")
+
+# --- 💾 7. ANKET VE VERİ TOPLAMA ---
 st.divider()
-c_left, c_right = st.columns([2, 1])
+st.subheader("📝 2209-A Araştırmasına Katılın")
+st.write("Tahminlerinizi kaydederek toplumsal beklenti endeksinin oluşmasına yardımcı olun.")
 
-with c_left:
-    st.subheader("🔍 Enflasyonun Bileşen Analizi")
-    data = {
-        "Kaynak": ["Döviz/Dışsal", "Gıda/Tarım", "Maliye/Faiz", "Maaş/Beklenti"],
-        "Etki Puanı": [e_kur, e_gida, e_mali, e_sosyal]
-    }
-    st.bar_chart(pd.DataFrame(data).set_index("Kaynak"))
+if st.button("Beklentilerimi Kaydet ve Endekse Katıl"):
+    save_survey(user_profile, yıl_sonu_tahmini, korku_faktoru)
+    st.success("Teşekkürler! Beklentileriniz veri tabanına işlendi.")
 
-with c_right:
-    st.subheader("💾 Senaryoyu Arşivle")
-    st.write("Bu veriler anonim olarak 'Piyasa Beklenti Anketi' için kaydedilir.")
-    if st.button("Tahminimi Veri Tabanına Kaydet"):
-        save_prediction(tahmini_dolar, toplam_enf, MEVCUT_FAIZ + faiz_hamlesi)
-        st.success("Veri tabanına işlendi! (TÜBİTAK Analizi Hazır)")
+# --- 📈 8. TOPLUMSAL ANALİZ (GERÇEK ZAMANLI VERİ) ---
+st.divider()
+st.subheader("📊 Toplumsal Beklenti Havuzu (Canlı Sonuçlar)")
 
-# --- 📚 8. VERİ TABANI ÖNİZLEME (HOCAYA GÖSTERMELİK) ---
-if st.checkbox("Kayıtlı Tahmin Geçmişini Göster (Admin)"):
-    conn = sqlite3.connect('ekonomi_verileri.db')
-    df_db = pd.read_sql_query("SELECT * FROM tahminler", conn)
-    st.dataframe(df_db.tail(10))
-    conn.close()
+conn = sqlite3.connect('hanehalkı_beklenti.db')
+df_res = pd.read_sql_query("SELECT * FROM anket", conn)
+conn.close()
+
+if not df_res.empty:
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.write("**Gruba Göre Ortalama Enflasyon Beklentisi**")
+        avg_enf = df_res.groupby("profil")["beklenen_enflasyon"].mean()
+        st.bar_chart(avg_enf)
+    
+    with col_b:
+        st.write("**En Çok Korkulan Zam Kalemleri**")
+        korku_counts = df_res["en_cok_korkulan"].value_counts()
+        st.bar_chart(korku_counts)
+else:
+    st.info("Henüz veri toplanmadı. İlk tahmini siz yapın!")
