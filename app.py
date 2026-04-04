@@ -47,7 +47,7 @@ user_profile = st.sidebar.selectbox("Sosyal Profiliniz:", ["Öğrenci", "Emekli"
 
 st.sidebar.divider()
 st.sidebar.write("**📈 Nisan-Aralık Artış Beklentiniz (%)**")
-dolar_artis = st.sidebar.slider("💵 Dolar Kuru (%)", 0, 100, 0)
+dolar_artis = st.sidebar.slider("💵 Dolar Kuru Artışı (%)", 0, 100, 0)
 gida = st.sidebar.slider("🛒 Gıda ve Market (%)", 0, 100, 0)
 kira = st.sidebar.slider("🏠 Kira ve Konut (%)", 0, 100, 0)
 ulasim = st.sidebar.slider("🚗 Ulaşım ve Akaryakıt (%)", 0, 100, 0)
@@ -60,14 +60,16 @@ weights = {"Öğrenci": [0.2, 0.25, 0.35, 0.15, 0.05], "Emekli": [0.15, 0.45, 0.
 w = weights[user_profile]
 beklenti_9ay = (dolar_artis * w[0] + gida * w[1] + kira * w[2] + ulasim * w[3] + diger * w[4])
 toplam_yıl_sonu = ILK_CEYREK_ENF + beklenti_9ay
+tahmini_dolar_sonu = GUNCEL_DOLAR_KURU * (1 + dolar_artis/100)
 
 # --- 🏁 ANA EKRAN ---
 st.subheader("🏁 Tahmin Sonuçlarınız")
-# Hedef sapması kaldırıldı, 3 kolon yapıldı
-m1, m2, m3 = st.columns(3)
-m1.metric("📊 Ocak-Mart Dönemi (Gerçekleşen)", f"%{ILK_CEYREK_ENF}")
+# 4 Kolon yaptık, Doları ekledik!
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("📊 Ocak-Mart (Gerçekleşen)", f"%{ILK_CEYREK_ENF}")
 m2.metric("🔮 Sizin 9 Aylık Beklentiniz", f"%{beklenti_9ay:.2f}")
 m3.metric("📈 Toplam Yıl Sonu Tahmininiz", f"%{toplam_yıl_sonu:.2f}")
+m4.metric("💵 Yıl Sonu Tahmini Dolar", f"{tahmini_dolar_sonu:.2f} TL", f"%{dolar_artis} Artış")
 
 st.divider()
 
@@ -80,7 +82,7 @@ st.divider()
 
 if st.button("🚀 Tahminimi Veri Havuzuna Gönder"):
     save_to_csv(user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
-    st.success("Veriler kaydedildi!")
+    st.success("Veriler başarıyla kaydedildi!")
 
 # --- 🛡️ GENİŞ YÖNETİCİ PANELİ ---
 st.sidebar.divider()
@@ -93,14 +95,14 @@ with st.sidebar.expander("🔐 Yönetici Girişi"):
             df = pd.read_csv(DB_FILE)
             
             # Üst Özet Kartları
-            c1, c2, c3 = st.columns(3)
+            c1, c2, c3, c4 = st.columns(4)
             c1.metric("Toplam Katılım", f"{len(df)} Kişi")
-            c2.metric("Ort. Beklenti (9 Ay)", f"%{df['beklenti_9ay'].mean():.2f}")
+            c2.metric("Ort. Enflasyon (9 Ay)", f"%{df['beklenti_9ay'].mean():.2f}")
             c3.metric("Ort. Yıl Sonu Tahmini", f"%{df['toplam_yıl_sonu'].mean():.2f}")
+            c4.metric("Ort. Dolar Artış Beklentisi", f"%{df['dolar_artis_beklentisi'].mean():.2f}")
             
             st.write("---")
             st.write("#### 📋 Tüm Veritabanı (Geniş Görünüm)")
-            # Tabloyu genişlettik
             st.dataframe(df, use_container_width=True)
             
             st.write("#### 📊 Grupların Beklenti Ortalamaları")
