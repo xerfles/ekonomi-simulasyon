@@ -31,13 +31,13 @@ def get_live_usd():
     except: return 44.92 
 
 # --- ⚙️ 3. AYARLAR ---
-st.set_page_config(page_title="Hanehalkı Ekonomi Paneli", layout="wide")
+st.set_page_config(page_title="Ekonomi Analiz Paneli", layout="wide")
 init_db()
 CANLI_DOLAR = get_live_usd()
 BAZ_ENFLASYON = 14.40 
 
 st.title("🏠 Hanehalkı Yaşam Maliyeti Analiz Paneli")
-st.caption(f"📡 Canlı Dolar: {CANLI_DOLAR} TL | 📊 İlk Çeyrek Gerçekleşen: %{BAZ_ENFLASYON}")
+st.caption(f"📡 Canlı Dolar: {CANLI_DOLAR} TL | 📊 Baz Enflasyon: %{BAZ_ENFLASYON}")
 
 # --- 🕹️ 4. KULLANICI GİRDİLERİ ---
 st.sidebar.header("👤 Durumunuz")
@@ -52,7 +52,7 @@ diger_artisi = st.sidebar.slider("Diğer Giderler (%)", 0, 100, 0)
 
 korku_faktoru = st.sidebar.selectbox("Sizi en çok zorlayan kalem:", ["Gıda", "Kira", "Akaryakıt", "Maaş Yetmezliği"])
 
-# --- 🧮 5. HESAPLAMA (AĞIRLIKLANDIRMA) ---
+# --- 🧮 5. HESAPLAMA ---
 weights = {
     "Öğrenci": {"gida": 0.30, "kira": 0.40, "ulasim": 0.20, "diger": 0.10},
     "Emekli": {"gida": 0.50, "kira": 0.20, "ulasim": 0.10, "diger": 0.20},
@@ -68,39 +68,45 @@ tahmin = BAZ_ENFLASYON + hissedilen_ek
 # --- 📊 6. SONUÇLAR ---
 st.divider()
 c1, c2, c3 = st.columns(3)
+with c1: st.metric("📊 Profil", user_profile)
+with c2: st.metric("📈 Hissedilen Enflasyon", f"%{tahmin:.2f}")
+with c3: st.metric("🛡️ Temel Endişe", korku_faktoru)
 
-with c1:
-    st.metric("📊 Seçilen Profil", user_profile)
-with c2:
-    st.metric("📈 Hissedilen Enflasyon", f"%{tahmin:.2f}")
-with c3:
-    st.metric("🛡️ Temel Endişe", korku_faktoru)
-
-# --- 💾 7. PİLOT ÇALIŞMA BÖLÜMÜ ---
+# --- 💾 7. VERİ GÖNDERME ---
 st.divider()
 st.subheader("🔍 Pilot Çalışma: Veri Toplama")
-st.write("Yaptığınız tahmini aşağıdaki butona basarak ortak havuzda toplanmasına yardımcı olabilirsiniz.")
-
 if st.button("Tahminimi Havuza Gönder"):
     save_survey(user_profile, tahmin, korku_faktoru)
-    st.success("Kaydedildi! Teşekkürler.")
+    st.success("Kaydedildi!")
 
-# --- 📈 8. CANLI SONUÇLAR ---
-st.divider()
-st.subheader("📊 Pilot Çalışma Güncel Sonuçları")
+# --- 🛡️ 8. GİZLİ ADMİN PANELİ (SADECE SENİN İÇİN) ---
+st.sidebar.divider()
+with st.sidebar.expander("🔐 Yönetici Girişi"):
+    sifre = st.text_input("Şifre Girin", type="password")
+    if sifre == "alper2026": # Şifren burada kanka
+        st.success("Giriş Yapıldı")
+        admin_modu = True
+    else:
+        admin_modu = False
 
-conn = sqlite3.connect('beklenti_havuzu.db')
-df_res = pd.read_sql_query("SELECT * FROM anket", conn)
-conn.close()
-
-if not df_res.empty:
-    cl, cr = st.columns(2)
-    with cl:
-        st.write("**Grupların Ortalama Beklentisi**")
-        st.bar_chart(df_res.groupby("profil")["beklenen_enflasyon"].mean())
+# --- 📈 9. GÖRÜNÜM ---
+if admin_modu:
+    st.divider()
+    st.subheader("📂 Yönetici Veri İzleme Paneli")
+    conn = sqlite3.connect('beklenti_havuzu.db')
+    df_res = pd.read_sql_query("SELECT * FROM anket", conn)
+    conn.close()
     
-    with cr:
-        st.write("**En Çok Belirtilen Endişeler**")
-        st.bar_chart(df_res["en_cok_korkulan"].value_counts())
+    if not df_res.empty:
+        st.write("### Tüm Ham Veriler (Excel Formatında)")
+        st.dataframe(df_res) # Tüm tabloyu burada göreceksin
+        
+        st.write("### Hızlı İstatistikler")
+        cl, cr = st.columns(2)
+        cl.bar_chart(df_res.groupby("profil")["beklenen_enflasyon"].mean())
+        cr.bar_chart(df_res["en_cok_korkulan"].value_counts())
+    else:
+        st.info("Henüz veri yok.")
 else:
-    st.info("Henüz veri girişi yapılmadı.")
+    # Admin değilse sadece boş bir teşekkür mesajı görsün veya hiçbir şey görmesin
+    st.caption("Veriler toplandıkça analiz sonuçları hoca ile paylaşılacaktır.")
