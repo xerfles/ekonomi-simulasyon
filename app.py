@@ -64,7 +64,6 @@ tahmini_dolar_sonu = GUNCEL_DOLAR_KURU * (1 + dolar_artis/100)
 
 # --- 🏁 ANA EKRAN ---
 st.subheader("🏁 Tahmin Sonuçlarınız")
-# 4 Kolon yaptık, Doları ekledik!
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("📊 Ocak-Mart (Gerçekleşen)", f"%{ILK_CEYREK_ENF}")
 m2.metric("🔮 Sizin 9 Aylık Beklentiniz", f"%{beklenti_9ay:.2f}")
@@ -84,28 +83,30 @@ if st.button("🚀 Tahminimi Veri Havuzuna Gönder"):
     save_to_csv(user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
     st.success("Veriler başarıyla kaydedildi!")
 
-# --- 🛡️ GENİŞ YÖNETİCİ PANELİ ---
+# --- 🛡️ YÖNETİCİ PANELİ (SAYFA ORTASINDA VE GENİŞ) ---
 st.sidebar.divider()
-with st.sidebar.expander("🔐 Yönetici Girişi"):
-    sifre = st.text_input("Şifre", type="password")
-    if sifre == "alper2026":
-        st.divider()
-        st.header("📂 Detaylı Analiz Paneli")
-        if os.path.exists(DB_FILE):
-            df = pd.read_csv(DB_FILE)
-            
-            # Üst Özet Kartları
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Toplam Katılım", f"{len(df)} Kişi")
-            c2.metric("Ort. Enflasyon (9 Ay)", f"%{df['beklenti_9ay'].mean():.2f}")
-            c3.metric("Ort. Yıl Sonu Tahmini", f"%{df['toplam_yıl_sonu'].mean():.2f}")
-            c4.metric("Ort. Dolar Artış Beklentisi", f"%{df['dolar_artis_beklentisi'].mean():.2f}")
-            
-            st.write("---")
-            st.write("#### 📋 Tüm Veritabanı (Geniş Görünüm)")
-            st.dataframe(df, use_container_width=True)
-            
-            st.write("#### 📊 Grupların Beklenti Ortalamaları")
-            st.bar_chart(df.groupby("profil")["toplam_yıl_sonu"].mean())
-        else:
-            st.info("Veri yok.")
+st.sidebar.subheader("🔐 Yönetici Erişimi")
+sifre = st.sidebar.text_input("Yönetici Şifresi", type="password")
+
+if sifre == "alper2026":
+    st.divider()
+    st.header("📂 Detaylı Analiz Paneli")
+    if os.path.exists(DB_FILE):
+        df = pd.read_csv(DB_FILE)
+        
+        # Üst Özet Kartları
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Toplam Katılım", f"{len(df)} Kişi")
+        c2.metric("Ort. Enflasyon (9 Ay)", f"%{df['beklenti_9ay'].mean():.2f}")
+        c3.metric("Ort. Yıl Sonu Tahmini", f"%{df['toplam_yıl_sonu'].mean():.2f}")
+        c4.metric("Ort. Dolar Artışı", f"%{df['dolar_artis_beklentisi'].mean():.2f}")
+        
+        st.write("---")
+        st.subheader("📋 Tüm Veritabanı (Geniş Görünüm)")
+        st.dataframe(df, use_container_width=True) # Tablo ekranı kaplar
+        
+        st.write("---")
+        st.subheader("📊 Grupların Beklenti Ortalamaları")
+        st.bar_chart(df.groupby("profil")["toplam_yıl_sonu"].mean())
+    else:
+        st.info("Sistemde henüz veri bulunmuyor.")
