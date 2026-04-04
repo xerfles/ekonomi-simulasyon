@@ -10,7 +10,7 @@ def save_to_csv(isim, profil, beklenti_9ay, toplam, dolar_artis, korku):
     new_data = pd.DataFrame([[
         datetime.now().strftime("%Y-%m-%d %H:%M"), 
         isim, profil, beklenti_9ay, toplam, dolar_artis, korku
-    ]], columns=['tarih', 'ad_soyad', 'profil', 'beklenti_9ay', 'toplam_yıl_sonu', 'dolar_artis_beklentisi', 'en_cok_korkulan'])
+    ]], columns=['tarih', 'isim', 'profil', 'beklenti_9ay', 'toplam_yıl_sonu', 'dolar_artis_beklentisi', 'en_cok_korkulan'])
     
     if not os.path.isfile(DB_FILE):
         new_data.to_csv(DB_FILE, index=False)
@@ -42,9 +42,9 @@ inf_col3.success(f"🎯 **TCMB Yıl Sonu Hedefi:** %{TCMB_2026_HEDEF}")
 st.divider()
 
 # --- 🕹️ KENAR ÇUBUĞU ---
-st.sidebar.header("👤 Katılımcı Bilgileri")
-# Bot engelleme ve doğrulama için isim alanı
-user_name = st.sidebar.text_input("Adınız ve Soyadınız:", placeholder="Örn: Alper Furkan")
+st.sidebar.header("👤 Katılımcı Bilgisi")
+# Sadece isim alıyoruz, soyadı ibaresini kaldırdım
+user_name = st.sidebar.text_input("İsminiz (Veya Takma Adınız):", placeholder="Örn: Alper")
 
 st.sidebar.divider()
 st.sidebar.header("🎯 Senaryo Oluştur")
@@ -84,13 +84,13 @@ st.table(hist_df)
 
 st.divider()
 
-# Kayıt Butonu (İsim kontrolü ile)
+# Kayıt Butonu
 if st.button("🚀 Tahminimi Veri Havuzuna Gönder"):
     if user_name.strip() == "":
-        st.error("Lütfen devam etmek için isminizi giriniz!")
+        st.error("Lütfen devam etmek için bir isim giriniz!")
     else:
         save_to_csv(user_name, user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
-        st.success(f"Teşekkürler {user_name}, tahminlerin başarıyla kaydedildi!")
+        st.success(f"Teşekkürler {user_name}, tahminin başarıyla kaydedildi!")
 
 # --- 🛡️ YÖNETİCİ PANELİ ---
 st.sidebar.divider()
@@ -110,7 +110,7 @@ if sifre == "alper2026":
         c4.metric("Ort. Dolar Artışı", f"%{df['dolar_artis_beklentisi'].mean():.2f}")
         
         st.write("---")
-        st.subheader("📋 Tüm Katılımcı Verileri (Geniş Görünüm)")
+        st.subheader("📋 Katılımcı Listesi (Geniş Görünüm)")
         st.dataframe(df, use_container_width=True) 
         
         st.write("---")
