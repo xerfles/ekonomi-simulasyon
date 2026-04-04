@@ -142,13 +142,6 @@ def ekonomi_pro_v13(kur, ucret, mazot, petrol, faiz, algi, guven, baz, sok, kira
     clear_output(wait=True)
     display(ui)
     
-    # --- 🎵 SES PANELİ ---
-    try:
-        display(Audio("abc123.m4a", autoplay=False))
-        print("🎵 Arka planda 'abc123.m4a' hazır. Oynat tuşuna basarak atmosferi başlatabilirsin.")
-    except:
-        print("⚠️ 'abc123.m4a' dosyası klasörde bulunamadı!")
-
     print("\n" + "═"*110)
     print(f"🏛️ 2026 TÜRKİYE EKONOMİSİ - TAM KAPSAMLI ANALİZ | DOLAR: {CANLI_DOLAR:.2f} TL")
     print("═"*110)
