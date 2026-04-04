@@ -1,3 +1,16 @@
+import subprocess
+import sys
+
+# Kütüphaneler eksikse otomatik yüklemeye çalışır
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+try:
+    import pandas
+    import requests
+except ImportError:
+    install('pandas')
+    install('requests')
 import streamlit as st
 import pandas as pd
 import requests
