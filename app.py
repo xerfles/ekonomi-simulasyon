@@ -1,11 +1,9 @@
 import streamlit as st
 import pandas as pd
-import requests
-import re
 import os
 from datetime import datetime
 
-# --- 📁 VERİ SAKLAMA (CSV TABANLI) ---
+# --- 📁 VERİ SAKLAMA ---
 DB_FILE = 'beklenti_havuzu.csv'
 
 def save_to_csv(profil, enflasyon, korku):
@@ -16,76 +14,76 @@ def save_to_csv(profil, enflasyon, korku):
     else:
         new_data.to_csv(DB_FILE, mode='a', index=False, header=False)
 
-# --- 📡 CANLI VERİ & SABİTLER ---
+# --- ⚙️ AYARLAR & SABİTLER ---
+st.set_page_config(page_title="2026 Ekonomi Paneli", layout="wide")
 TCMB_2026_HEDEF = 22.0
 BAZ_ENFLASYON = 14.40 
 
-# --- ⚙️ AYARLAR ---
-st.set_page_config(page_title="2026 Ekonomi Analizi", layout="wide")
-
 st.title("🏠 2026 Yılı Yaşam Maliyeti Tahmin Paneli")
-st.markdown("Nisan-Aralık dönemi için kendi ekonomik senaryonuzu oluşturun.")
 
-# --- 🕹️ KENAR ÇUBUĞU ---
-st.sidebar.header("🎯 Tahminlerinizi Girin")
-
-user_profile = st.sidebar.selectbox(
-    "Durumunuz:", 
-    ["Öğrenci", "Emekli", "Çalışan", "Kamu Personeli", "Esnaf"]
-)
+# --- 🕹️ KULLANICI ARAYÜZÜ ---
+st.sidebar.header("🎯 Tahmin Ekranı")
+user_profile = st.sidebar.selectbox("Durumunuz:", ["Öğrenci", "Emekli", "Çalışan", "Kamu Personeli", "Esnaf"])
 
 st.sidebar.divider()
+gida = st.sidebar.slider("🛒 Market (%)", 0, 100, 0)
+kira = st.sidebar.slider("🏠 Konut (%)", 0, 100, 0)
+ulasim = st.sidebar.slider("🚗 Ulaşım (%)", 0, 100, 0)
+diger = st.sidebar.slider("🎭 Diğer (%)", 0, 100, 0)
 
-gida_artisi = st.sidebar.slider("🛒 Market/Gıda (%)", 0, 100, 0)
-kira_artisi = st.sidebar.slider("🏠 Kira/Konut (%)", 0, 100, 0)
-ulasim_artisi = st.sidebar.slider("🚗 Ulaşım/Benzin (%)", 0, 100, 0)
-diger_artisi = st.sidebar.slider("🎭 Diğer Giderler (%)", 0, 100, 0)
+korku = st.sidebar.selectbox("En Büyük Endişeniz:", ["Gıda Fiyatları", "Kira Artışı", "Akaryakıt Zamları", "Eğitim/Sağlık Giderleri"])
 
-korku_faktoru = st.sidebar.selectbox(
-    "Sizi en çok korkutan zam:", 
-    ["Gıda", "Kira", "Akaryakıt", "Eğitim/Sağlık"]
-)
-
-# --- 🧮 HESAPLAMA (SADELEŞTİRİLMİŞ) ---
-# Profillere göre ağırlıklar
-weights = {
-    "Öğrenci": [0.30, 0.40, 0.20, 0.10],
-    "Emekli": [0.50, 0.20, 0.10, 0.20],
-    "Çalışan": [0.30, 0.30, 0.20, 0.20],
-    "Kamu Personeli": [0.30, 0.30, 0.20, 0.20],
-    "Esnaf": [0.20, 0.30, 0.30, 0.20]
-}
-
+# Hesaplama
+weights = {"Öğrenci": [0.3, 0.4, 0.2, 0.1], "Emekli": [0.5, 0.2, 0.1, 0.2], "Çalışan": [0.3, 0.3, 0.2, 0.2], "Kamu Personeli": [0.3, 0.3, 0.2, 0.2], "Esnaf": [0.2, 0.3, 0.3, 0.2]}
 w = weights[user_profile]
-ek_enflasyon = (gida_artisi * w[0]) + (kira_artisi * w[1]) + (ulasim_artisi * w[2]) + (diger_artisi * w[3])
-tahmin = BAZ_ENFLASYON + ek_enflasyon
+tahmin = BAZ_ENFLASYON + (gida * w[0] + kira * w[1] + ulasim * w[2] + diger * w[3])
 
-# --- 📊 SONUÇLAR ---
+# Kullanıcı Sonuç Ekranı
 st.divider()
-col1, col2, col3 = st.columns(3)
+c1, c2, c3 = st.columns(3)
+c1.metric("Profil", user_profile)
+c2.metric("TCMB Hedefi", f"%{TCMB_2026_HEDEF}")
+c3.metric("Senaryonuz", f"%{tahmin:.2f}", f"{tahmin-TCMB_2026_HEDEF:.2f} Sapma", delta_color="inverse")
 
-col1.metric("📊 Profil", user_profile)
-col2.metric("🎯 TCMB Hedefi", f"%{TCMB_2026_HEDEF}")
-col3.metric("📈 Sizin Tahmininiz", f"%{tahmin:.2f}", f"{tahmin-TCMB_2026_HEDEF:.2f} Sapma", delta_color="inverse")
+if st.button("🚀 Veriyi Havuza Gönder"):
+    save_to_csv(user_profile, tahmin, korku)
+    st.success("Tahmininiz başarıyla kaydedildi!")
 
-# --- 💾 VERİ GÖNDERME ---
-st.divider()
-st.subheader("🔍 Pilot Çalışma")
-st.write("Tahmininizi havuza göndererek genel ortalamaya katkıda bulunun.")
-
-if st.button("🚀 Tahminimi Kaydet"):
-    save_to_csv(user_profile, tahmin, korku_faktoru)
-    st.success("Kaydedildi! Teşekkürler.")
-
-# --- 🛡️ ADMİN PANELİ ---
+# --- 🛡️ GELİŞMİŞ YÖNETİCİ PANELİ ---
 st.sidebar.divider()
-with st.sidebar.expander("🔐 Yönetici"):
+with st.sidebar.expander("🔐 Yönetici Girişi"):
     sifre = st.text_input("Şifre", type="password")
     if sifre == "alper2026":
+        st.write("### 📂 Detaylı Analiz Raporu")
         if os.path.exists(DB_FILE):
             df = pd.read_csv(DB_FILE)
-            st.write(f"**Toplam Kayıt:** {len(df)}")
-            st.write(f"**Genel Ort.** %{df['beklenen_enflasyon'].mean():.2f}")
-            st.dataframe(df)
+            
+            # 1. ÖZET METRİKLER
+            st.divider()
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Toplam Katılımcı", f"{len(df)} Kişi")
+            m2.metric("Genel Beklenti Ort.", f"%{df['beklenen_enflasyon'].mean():.2f}")
+            m3.metric("En Çok Korkulan", df['en_cok_korkulan'].value_counts().idxmax())
+
+            # 2. GRUP BAZLI ORTALAMALAR (Tablo ve Grafik)
+            st.write("#### 📊 Gruplara Göre Beklenen Enflasyon Ortalamaları")
+            grup_analiz = df.groupby("profil")["beklenen_enflasyon"].agg(['mean', 'count']).rename(columns={'mean': 'Ort. Beklenti (%)', 'count': 'Kişi Sayısı'})
+            st.table(grup_analiz.style.format("{:.2f}", subset=['Ort. Beklenti (%)']))
+            st.bar_chart(df.groupby("profil")["beklenen_enflasyon"].mean())
+
+            # 3. KORKU ANALİZİ
+            st.write("#### 🚨 Toplumun En Çok Korktuğu Kalemler")
+            korku_sayilari = df['en_cok_korkulan'].value_counts()
+            st.bar_chart(korku_sayilari)
+
+            # 4. HAM VERİ VE SİLME
+            with st.expander("🗑️ Kayıtları Yönet"):
+                st.dataframe(df, use_container_width=True)
+                silme_listesi = df['tarih'].tolist()
+                secilen = st.selectbox("Silinecek kaydın tarihini seçin:", silme_listesi)
+                if st.button("Kayıtı Sil"):
+                    df = df[df.tarih != secilen]
+                    df.to_csv(DB_FILE, index=False)
+                    st.rerun()
         else:
-            st.info("Veri yok.")
+            st.warning("Henüz veri toplanmadı.")
