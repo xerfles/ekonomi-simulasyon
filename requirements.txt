@@ -2,3 +2,4 @@ streamlit
 pandas
 requests
 datetime
+pysqlite3-binary
