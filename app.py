@@ -90,7 +90,7 @@ if st.button("🚀 Tahminimi Veri Havuzuna Gönder"):
         save_to_csv(user_name, user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
         st.success(f"Teşekkürler {user_name}, tahminin başarıyla kaydedildi!")
 
-# --- 🛡️ YÖNETİCİ PANELİ (GELİŞMİŞ GRAFİKLİ) ---
+# --- 🛡️ YÖNETİCİ PANELİ (HATA KORUMALI) ---
 st.sidebar.divider()
 st.sidebar.subheader("🔐 Yönetici Erişimi")
 sifre = st.sidebar.text_input("Yönetici Şifresi", type="password")
@@ -101,41 +101,39 @@ if sifre == "alper2026":
     if os.path.exists(DB_FILE):
         df = pd.read_csv(DB_FILE)
         
-        # Üst Metrikler
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Toplam Katılım", f"{len(df)} Kişi")
-        c2.metric("Ort. Enflasyon (9 Ay)", f"%{df['beklenti_9ay'].mean():.2f}")
-        c3.metric("Ort. Yıl Sonu Tahmini", f"%{df['toplam_yıl_sonu'].mean():.2f}")
-        c4.metric("Ort. Dolar Artışı", f"%{df['dolar_artis_beklentisi'].mean():.2f}")
-        
-        st.divider()
-        st.subheader("📋 Kayıt Yönetimi")
-        st.dataframe(df, use_container_width=True)
-        
-        st.write("#### 🗑️ Veri Temizleme")
-        row_to_delete = st.number_input("Silmek istediğiniz satır no:", min_value=0, max_value=len(df)-1, step=1)
-        if st.button(f"❌ {row_to_delete} Numaralı Kaydı Sil"):
-            df = df.drop(df.index[row_to_delete])
-            df.to_csv(DB_FILE, index=False)
-            st.rerun()
-
-        st.divider()
-        
-        # İSTEDİĞİN YENİ GRAFİKLER BURADA
-        st.subheader("📊 İstatistiksel Dağılımlar")
-        g1, g2, g3 = st.columns(3)
-        
-        with g1:
-            st.write("**👨‍👩‍👧‍👦 Katılımcı Profili Dağılımı**")
-            st.bar_chart(df['profil'].value_counts())
+        # --- 🛡️ KRİTİK DÜZELTME: Veri var mı kontrolü ---
+        if not df.empty:
+            # Üst Metrikler
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Toplam Katılım", f"{len(df)} Kişi")
+            c2.metric("Ort. Enflasyon (9 Ay)", f"%{df['beklenti_9ay'].mean():.2f}")
+            c3.metric("Ort. Yıl Sonu Tahmini", f"%{df['toplam_yıl_sonu'].mean():.2f}")
+            c4.metric("Ort. Dolar Artışı", f"%{df['dolar_artis_beklentisi'].mean():.2f}")
             
-        with g2:
-            st.write("**📈 Grupların Tahmin Ortalaması**")
-            st.bar_chart(df.groupby("profil")["toplam_yıl_sonu"].mean())
+            st.divider()
+            st.subheader("📋 Kayıt Yönetimi")
+            st.dataframe(df, use_container_width=True)
             
-        with g3:
-            st.write("**😨 En Çok Korkulan Harcamalar**")
-            st.bar_chart(df['en_cok_korkulan'].value_counts())
+            st.write("#### 🗑️ Veri Temizleme")
+            row_to_delete = st.number_input("Silmek istediğiniz satır no:", min_value=0, max_value=len(df)-1, step=1)
+            if st.button(f"❌ {row_to_delete} Numaralı Kaydı Sil"):
+                df = df.drop(df.index[row_to_delete])
+                df.to_csv(DB_FILE, index=False)
+                st.rerun()
 
+            st.divider()
+            st.subheader("📊 İstatistiksel Dağılımlar")
+            g1, g2, g3 = st.columns(3)
+            with g1:
+                st.write("**👨‍👩‍👧‍👦 Katılımcı Profili**")
+                st.bar_chart(df['profil'].value_counts())
+            with g2:
+                st.write("**📈 Grupların Tahmin Ort.**")
+                st.bar_chart(df.groupby("profil")["toplam_yıl_sonu"].mean())
+            with g3:
+                st.write("**😨 En Çok Korkulanlar**")
+                st.bar_chart(df['en_cok_korkulan'].value_counts())
+        else:
+            st.warning("⚠️ Veritabanı şu an boş. Analiz gösterilemiyor.")
     else:
-        st.info("Henüz veri girişi yapılmadı.")
+        st.info("📂 Henüz veritabanı dosyası oluşturulmadı.")
