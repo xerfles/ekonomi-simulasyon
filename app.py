@@ -14,102 +14,92 @@ def save_to_csv(profil, enflasyon, korku):
     else:
         new_data.to_csv(DB_FILE, mode='a', index=False, header=False)
 
-# --- 📊 TARİHSEL VERİLER (TÜİK/TCMB RESMİ VERİLERİ) ---
+# --- 📊 EKONOMİK GÖSTERGELER (Nisan 2026 İtibarıyla) ---
+GERCEKLESEN_İLK_3_AY = 14.40  # Ocak-Şubat-Mart toplamı
+GUNCEL_YILLIK_ENFLASYON = 31.53 # Şu anki manşet enflasyon
+TCMB_2026_HEDEF = 22.0
+
 GECMIS_ENFLASYON = {
-    "2022": 64.27,
     "2023": 64.77,
     "2024": 44.81,
-    "2025": 32.10 # Tahmini/Gerçekleşen
+    "2025": 32.10
 }
-TCMB_2026_HEDEF = 22.0
-BAZ_ENFLASYON = 14.40 
 
 # --- ⚙️ AYARLAR ---
-st.set_page_config(page_title="2026 Ekonomi Analizi", layout="wide")
+st.set_page_config(page_title="2026 Ekonomi Simülatörü", layout="wide")
 
 st.title("🏠 2026 Yılı Yaşam Maliyeti Tahmin Paneli")
+st.markdown(f"🗓 **Dönem:** Nisan - Aralık 2026 | 📊 **Mevcut Yıllık Enflasyon:** %{GUNCEL_YILLIK_ENFLASYON}")
 
 # --- 🕹️ KULLANICI GİRDİLERİ ---
-st.sidebar.header("🎯 Tahmin Senaryosu")
+st.sidebar.header("🎯 Tahmin Parametreleri")
+st.sidebar.info(f"Yılın ilk 3 ayında gerçekleşen enflasyon: %{GERCEKLESEN_İLK_3_AY}")
+
 user_profile = st.sidebar.selectbox("Profiliniz:", ["Öğrenci", "Emekli", "Çalışan", "Kamu Personeli", "Esnaf"])
 st.sidebar.divider()
 
+st.sidebar.write("**Nisan-Aralık arası beklediğiniz artışlar:**")
 gida = st.sidebar.slider("🛒 Market/Gıda (%)", 0, 100, 0)
 kira = st.sidebar.slider("🏠 Kira/Konut (%)", 0, 100, 0)
 ulasim = st.sidebar.slider("🚗 Ulaşım (%)", 0, 100, 0)
 diger = st.sidebar.slider("🎭 Diğer (%)", 0, 100, 0)
 
-korku = st.sidebar.selectbox("Temel Endişe:", ["Gıda Fiyatları", "Kira Artışı", "Akaryakıt Zamları", "Eğitim/Sağlık"])
+korku = st.sidebar.selectbox("En Büyük Endişe:", ["Gıda Fiyatları", "Kira Artışı", "Akaryakıt Zamları", "Eğitim/Sağlık"])
 
-# Hesaplama
+# Hesaplama Mantığı
 weights = {"Öğrenci": [0.3, 0.4, 0.2, 0.1], "Emekli": [0.5, 0.2, 0.1, 0.2], "Çalışan": [0.3, 0.3, 0.2, 0.2], "Kamu Personeli": [0.3, 0.3, 0.2, 0.2], "Esnaf": [0.2, 0.3, 0.3, 0.2]}
 w = weights[user_profile]
-tahmin = BAZ_ENFLASYON + (gida * w[0] + kira * w[1] + ulasim * w[2] + diger * w[3])
+nisan_aralik_tahmin = (gida * w[0] + kira * w[1] + ulasim * w[2] + diger * w[3])
+yıl_sonu_toplam_tahmin = GERCEKLESEN_İLK_3_AY + nisan_aralik_tahmin
 
-# --- 🏁 ANA EKRAN: SONUÇ VE KIYASLAMA ---
-st.subheader("🏁 Senaryo Karşılaştırması")
-col_res, col_hist = st.columns([2, 1])
+# --- 📊 ANA EKRAN: KARŞILAŞTIRMALI SONUÇLAR ---
+st.divider()
+st.subheader("🏁 Enflasyon Karşılaştırma Paneli")
 
-with col_res:
-    st.write("#### Tahmin Özeti")
-    r1, r2, r3 = st.columns(3)
-    r1.metric("📊 Profil", user_profile)
-    r2.metric("🎯 2026 Hedefi", f"%{TCMB_2026_HEDEF}")
-    r3.metric("📈 Sizin Tahmininiz", f"%{tahmin:.2f}", f"{tahmin-TCMB_2026_HEDEF:.2f} Sapma", delta_color="inverse")
-    
-    if st.button("🚀 Tahminimi Havuza Kaydet"):
-        save_to_csv(user_profile, tahmin, korku)
-        st.success("Veriler başarıyla kaydedildi!")
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("📊 Mevcut Enflasyon", f"%{GUNCEL_YILLIK_ENFLASYON}")
+m2.metric("🎯 TCMB 2026 Hedefi", f"%{TCMB_2026_HEDEF}")
+m3.metric("📈 Sizin Tahmininiz", f"%{yıl_sonu_toplam_tahmin:.2f}")
 
-with col_hist:
-    st.write("#### 📜 Geçmiş Yıllar")
-    # Geçmiş verilerle mevcut tahmini birleştiriyoruz
+# Sapma Analizi
+sapma = yıl_sonu_toplam_tahmin - TCMB_2026_HEDEF
+m4.metric("⚖️ Hedef Sapması", f"{sapma:+.2f} Puan", delta_color="inverse")
+
+# --- 📉 GÖRSEL ANALİZ ---
+st.divider()
+c_chart, c_info = st.columns([2, 1])
+
+with c_chart:
+    st.write("#### 📜 Yıllara Göre Enflasyon Seyri ve Tahmininiz")
     hist_df = pd.DataFrame({
-        "Yıl": list(GECMIS_ENFLASYON.keys()) + ["2026 (Siz)"],
-        "Enflasyon (%)": list(GECMIS_ENFLASYON.values()) + [tahmin]
+        "Yıl": list(GECMIS_ENFLASYON.keys()) + ["2026 (Mevcut)", "2026 (Sizin Tahmin)"],
+        "Enflasyon (%)": list(GECMIS_ENFLASYON.values()) + [GUNCEL_YILLIK_ENFLASYON, yıl_sonu_toplam_tahmin]
     })
     st.bar_chart(hist_df.set_index("Yıl"))
 
-# --- 🛡️ YÖNETİCİ PANELİ (FERAH GÖRÜNÜM) ---
+with c_info:
+    st.write("#### 💡 Analiz Notu")
+    st.write(f"""
+    - **İlk 3 Ay:** %{GERCEKLESEN_İLK_3_AY} (Gerçekleşti)
+    - **Sizin Beklentiniz (Son 9 Ay):** %{nisan_aralik_tahmin:.2f}
+    - **Yıl Sonu Toplam:** %{yıl_sonu_toplam_tahmin:.2f}
+    """)
+    if st.button("🚀 Senaryomu Havuza Gönder"):
+        save_to_csv(user_profile, yıl_sonu_toplam_tahmin, korku)
+        st.success("Veriler kaydedildi!")
+
+# --- 🛡️ YÖNETİCİ PANELİ ---
 st.sidebar.divider()
 with st.sidebar.expander("🔐 Yönetici Girişi"):
     sifre = st.text_input("Şifre", type="password")
-    admin_active = (sifre == "alper2026")
-
-if admin_active:
-    st.divider()
-    st.header("📂 Stratejik Analiz Raporu")
-    if os.path.exists(DB_FILE):
-        df = pd.read_csv(DB_FILE)
-        
-        # Üst Metrikler
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Toplam Katılım", f"{len(df)} Kişi")
-        m2.metric("Genel Beklenti Ort.", f"%{df['beklenen_enflasyon'].mean():.2f}")
-        m3.metric("En Düşük", f"%{df['beklenen_enflasyon'].min():.2f}")
-        m4.metric("En Yüksek", f"%{df['beklenen_enflasyon'].max():.2f}")
-
-        # Analiz Bölümleri
+    if sifre == "alper2026":
         st.divider()
-        c_left, c_right = st.columns([1, 1.5])
-        with c_left:
-            st.write("#### 📊 Grup Bazlı Detaylar")
-            g_df = df.groupby("profil")["beklenen_enflasyon"].agg(['mean', 'count']).reset_index()
-            g_df.columns = ['Grup', 'Ort. Beklenti (%)', 'Kişi']
-            st.dataframe(g_df.style.format("{:.2f}", subset=['Ort. Beklenti (%)']), use_container_width=True)
-        with c_right:
-            st.write("#### 📈 Grupların Tahmin Dağılımı")
+        st.header("📂 Yönetici Analiz Raporu")
+        if os.path.exists(DB_FILE):
+            df = pd.read_csv(DB_FILE)
+            st.metric("Toplam Katılım", len(df))
+            st.write("#### Grupların Beklenti Ortalamaları")
             st.bar_chart(df.groupby("profil")["beklenen_enflasyon"].mean())
-
-        st.write("#### 🚨 Toplumun Risk Algısı")
-        st.bar_chart(df['en_cok_korkulan'].value_counts())
-        
-        with st.expander("🗑️ Veri Yönetimi"):
             st.dataframe(df)
-            sil_id = st.selectbox("Silinecek tarih:", df['tarih'].tolist())
-            if st.button("Seçileni Sil"):
-                df = df[df.tarih != sil_id]
-                df.to_csv(DB_FILE, index=False)
-                st.rerun()
-    else:
-        st.info("Henüz veri yok.")
+        else:
+            st.info("Henüz veri yok.")
