@@ -42,9 +42,10 @@ st.set_page_config(page_title="Ekonomi Analiz Paneli", layout="wide")
 init_db()
 CANLI_DOLAR = get_live_usd()
 BAZ_ENFLASYON = 14.40 
+TCMB_2026_HEDEF = 22.0 # Merkez Bankası 2026 Yıl Sonu Tahmini
 
 st.title("🏠 Hanehalkı Yaşam Maliyeti Analiz Paneli")
-st.caption(f"📡 Canlı Dolar: {CANLI_DOLAR} TL | 📊 Baz Enflasyon: %{BAZ_ENFLASYON}")
+st.caption(f"📡 Canlı Dolar: {CANLI_DOLAR} TL | 📊 İlk Çeyrek Gerçekleşen Enflasyon: %{BAZ_ENFLASYON}")
 
 # --- 🕹️ 4. KULLANICI GİRDİLERİ ---
 st.sidebar.header("👤 Durumunuz")
@@ -72,12 +73,22 @@ w = weights[user_profile]
 hissedilen_ek = (gida_artisi * w["gida"]) + (kira_artisi * w["kira"]) + (ulasim_artisi * w["ulasim"]) + (diger_artisi * w["diger"])
 tahmin = BAZ_ENFLASYON + hissedilen_ek
 
-# --- 📊 6. SONUÇLAR ---
+# --- 📊 6. SONUÇLAR (TCMB EKLEMELİ) ---
 st.divider()
-c1, c2, c3 = st.columns(3)
-with c1: st.metric("📊 Seçilen Profil", user_profile)
-with c2: st.metric("📈 Hissedilen Enflasyon", f"%{tahmin:.2f}")
-with c3: st.metric("🛡️ Temel Endişe", korku_faktoru)
+c1, c2, c3, c4 = st.columns(4) # Kolon sayısını 4'e çıkardık
+
+with c1: 
+    st.metric("📊 Seçilen Profil", user_profile)
+with c2: 
+    st.metric("🎯 TCMB 2026 Hedefi", f"%{TCMB_2026_HEDEF}")
+    st.caption("Resmi Enflasyon Tahmini")
+with c3: 
+    # Sapma miktarını TCMB hedefine göre hesaplıyoruz
+    delta_val = tahmin - TCMB_2026_HEDEF
+    st.metric("📈 Hissedilen Enflasyon", f"%{tahmin:.2f}", f"{delta_val:.2f} Sapma", delta_color="inverse")
+    st.caption("Sizin Tahmininiz")
+with c4: 
+    st.metric("🛡️ Temel Endişe", korku_faktoru)
 
 # --- 💾 7. VERİ GÖNDERME ---
 st.divider()
@@ -106,7 +117,8 @@ if admin_modu:
         m1, m2, m3 = st.columns(3)
         with m1:
             genel_ort = df["beklenen_enflasyon"].mean()
-            st.metric("🌍 Toplum Beklentisi (Ort.)", f"%{genel_ort:.2f}")
+            # Genel beklentinin TCMB hedefinden farkını da yönetici görsün
+            st.metric("🌍 Toplum Beklentisi (Ort.)", f"%{genel_ort:.2f}", f"{genel_ort - TCMB_2026_HEDEF:.2f} Hedef Sapması")
         with m2:
             populer_grup = df["profil"].value_counts().idxmax()
             st.metric("🏆 En Aktif Katılımcı", populer_grup)
@@ -124,9 +136,6 @@ if admin_modu:
             st.write("### 👥 Katılım Yoğunluğu (Kişi)")
             st.bar_chart(df["profil"].value_counts())
             
-        st.write("### 🚨 Korku Dağılım Analizi")
-        st.bar_chart(df["en_cok_korkulan"].value_counts())
-
         # VERİ LİSTESİ VE TEMİZLEME
         st.divider()
         with st.expander("🗑️ Ham Veri Listesi ve Kayıt Silme"):
@@ -137,7 +146,6 @@ if admin_modu:
                 st.warning("Kayıt silindi, sayfa yenileniyor...")
                 st.rerun()
     else:
-        st.info("Henüz analiz edilecek veri toplanmadı. Birkaç giriş yapıp tekrar deneyin.")
+        st.info("Henüz analiz edilecek veri toplanmadı.")
 else:
-    # Kullanıcı yönetici değilse hiçbir istatistik görmez
     st.info("💡 **Bilgi:** Pilot çalışma verileri anonim olarak toplanmaktadır. Analiz sonuçları sadece yönetici yetkisiyle görüntülenebilir.")
