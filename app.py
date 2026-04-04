@@ -1,6 +1,31 @@
 import subprocess
 import sys
 
+# --- 🛠️ EKSTRA GÜVENLİK: KÜTÜPHANELERİ ZORLA YÜKLE ---
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+try:
+    import pandas as pd
+    import requests
+    import streamlit as st
+except ImportError:
+    install('pandas')
+    install('requests')
+    import pandas as pd
+    import requests
+    import streamlit as st
+
+# --- BURADAN SONRASI SENİN ESKİ KODUN ---
+import re
+import os
+from datetime import datetime
+
+# (Buraya önceki en son çalışan kodunu devam ettir...)
+# Veri tabanı (CSV) ve diğer fonksiyonların olduğu kısım...
+import subprocess
+import sys
+
 # Kütüphaneler eksikse otomatik yüklemeye çalışır
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
