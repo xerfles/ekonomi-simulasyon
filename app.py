@@ -13,18 +13,22 @@ def get_live_usd():
     except:
         return 44.92 
 
-# --- ⚙️ 2. AYARLAR ---
+# --- ⚙️ 2. AYARLAR & MEVCUT DURUM ---
 st.set_page_config(page_title="2026 Ekonomi Strateji Matrisi", layout="wide")
 CANLI_DOLAR = get_live_usd()
-BAZ_ENFLASYON = 14.40 # Ocak-Mart Gerçekleşen
-RESMI_HEDEF = 22.0
-MEVCUT_FAIZ = 37.0
+BAZ_ENFLASYON = 14.40   # Ocak-Mart Gerçekleşen Veri
+RESMI_HEDEF = 22.0      # Yıl Sonu Hedefi
+MEVCUT_FAIZ = 37.0      # Güncel Politika Faizi
 
 st.title("🏛️ 2026 Türkiye Makroekonomik Strateji Matrisi")
-st.markdown(f"📡 **Veri:** 4 Nisan 2026 | **Anlık Dolar:** {CANLI_DOLAR} TL | **Ocak-Mart Birikmiş:** %{BAZ_ENFLASYON}")
+st.markdown(f"""
+📡 **Veri Tarihi:** 4 Nisan 2026 | **Anlık Dolar:** {CANLI_DOLAR} TL | 
+**Mevcut Politika Faizi:** %{MEVCUT_FAIZ} | **İlk Çeyrek Enflasyonu:** %{BAZ_ENFLASYON}
+""")
 
-# --- 🕹️ 3. KONTROL PANELİ (SLIDERLAR 0'DAN BAŞLAR) ---
-st.sidebar.header("🕹️ Nisan-Aralık Parametreleri")
+# --- 🕹️ 3. KONTROL PANELİ (NİSAN-ARALIK İÇİN SIFIRLANDI) ---
+st.sidebar.header("🕹️ Nisan-Aralık Dönemi Kararları")
+st.sidebar.write("Gelecek 9 ayı yönetmek için sliderları kullanın.")
 
 with st.sidebar.expander("🌐 Makro & Dışsal Faktörler", expanded=True):
     kur = st.slider("Kur Artışı (%)", -5, 50, 0)
@@ -35,7 +39,7 @@ with st.sidebar.expander("🌐 Makro & Dışsal Faktörler", expanded=True):
 with st.sidebar.expander("💰 Maliye & Bütçe Politikası"):
     vergi = st.slider("Vergi Artış/Yükü (%)", 0, 40, 0)
     butce = st.slider("Bütçe Açığı (%)", 0, 20, 0)
-    faiz = st.slider("MB Faiz Hamlesi (Puan)", -15, 15, 0)
+    faiz_hamlesi = st.slider("MB Faiz Hamlesi (Puan)", -15, 15, 0)
 
 with st.sidebar.expander("🌾 Tarım & Gıda Krizi"):
     gubre = st.slider("Gübre/Tohum Maliyeti (%)", 0, 60, 0)
@@ -58,7 +62,7 @@ e_kira = kira * 0.18
 e_gida = (gida * 0.15) + (gubre * 0.08) + (araci * 0.10) + (tarim_sorun * 0.12)
 e_maliye = (vergi * 0.14) + (butce * 0.10)
 e_psiko = (algi * 0.20) + (dis_sok * 0.10) + ((5 - guven) * 0.80)
-e_faiz = faiz * -0.18
+e_faiz = faiz_hamlesi * -0.18
 e_baz = baz_puan * 1.0
 
 # Yeni eklenen enflasyon baskısı ve toplam
@@ -76,20 +80,26 @@ with c1:
 with c2:
     delta_val = toplam_enflasyon - RESMI_HEDEF
     st.metric("📈 Şu An Olan Enflasyon", f"%{toplam_enflasyon:.2f}", f"{delta_val:.2f} Sapma", delta_color="inverse")
-    st.caption("İlk Çeyrek + Sizin Kararlarınız")
+    st.caption("İlk Çeyrek (%14.4) + Sizin Kararlarınız")
 
 with c3:
-    st.metric("💰 Yeni Dolar Kuru", f"{CANLI_DOLAR * (1 + kur/100):.2f} TL")
-    st.caption("Yıl Sonu Kur Tahmini")
+    yeni_faiz = MEVCUT_FAIZ + faiz_hamlesi
+    st.metric("🏦 Yeni Politika Faizi", f"%{yeni_faiz}")
+    st.caption(f"Baz: %{MEVCUT_FAIZ}")
 
 st.divider()
 
-# --- 📊 6. ANALİZ GRAFİĞİ ---
-st.subheader("📊 Nisan-Aralık Enflasyon Kaynakları")
+# --- 📊 6. NİSAN-ARALIK ANALİZİ ---
+st.subheader("📊 Nisan-Aralık Dönemi Ek Enflasyon Yükü")
+if ek_baski > 0:
+    st.warning(f"Seçtiğiniz parametreler yılın geri kalanında +%{ek_baski:.2f} ek enflasyon yaratıyor.")
+else:
+    st.success(f"Seçtiğiniz parametreler yılın geri kalanında enflasyonu %{abs(ek_baski):.2f} puan aşağı çekiyor.")
+
 analiz_df = pd.DataFrame({
-    "Kategori": ["Kur/Dışsal", "Ücret", "Kira", "Gıda/Tarım", "Maliye", "Psikoloji/Güven", "Faiz Etkisi", "Baz Etkisi"],
-    "Etki (Puan)": [e_kur, e_ucret, e_kira, e_gida, e_maliye, e_psiko, e_faiz, e_baz]
+    "Kategori": ["Kur/Fed", "Ücretler", "Kiralar", "Gıda/Tarım", "Maliye/Vergi", "Psikoloji/Güven", "Faiz Hamlesi", "Baz Etkisi"],
+    "Ek Puan Katkısı": [e_kur, e_ucret, e_kira, e_gida, e_maliye, e_psiko, e_faiz, e_baz]
 })
 st.bar_chart(analiz_df.set_index("Kategori"))
 
-st.info(f"💡 **Not:** Başlangıç değeriniz ilk 3 ayın verisi olan %{BAZ_ENFLASYON}'dur. Sliderları hareket ettirdikçe yılın geri kalanının etkisini göreceksiniz.")
+st.info("💡 **İpucu:** Tüm sliderlar '0'dayken sadece Ocak-Mart verisini görürsünüz. Hareket ettirdikçe 9 aylık faturayı çıkarırsınız.")
