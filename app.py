@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 import re
 
-# --- 📡 CANLI VERİ ÇEKİCİ (4 NİSAN 2026) ---
+# --- 📡 1. CANLI DOLAR KURUNU ÇEK ---
 def get_live_usd():
     try:
         url = "https://www.google.com/finance/quote/USD-TRY"
@@ -11,83 +11,82 @@ def get_live_usd():
         match = re.search(r'class="YMlKec fxKbKc">([\d,.]+)<', res.text)
         return float(match.group(1).replace(",", ""))
     except:
-        return 44.88 
+        return 44.92 
 
-# --- ⚙️ AYARLAR ---
-st.set_page_config(page_title="2026 Ekonomi Simülatörü v10", layout="wide")
+# --- ⚙️ 2. RESMİ VERİLER (4 NİSAN 2026) ---
+st.set_page_config(page_title="2026 Ekonomi Analizi", layout="wide")
 CANLI_DOLAR = get_live_usd()
-BIRIKMIS_ENF = 14.40 # Ocak-Mart 2026
+
+# OCAK-MART 2026 GERÇEKLEŞEN ENFLASYON (Senin Başlangıç Noktan)
+BAZ_ENFLASYON = 14.40 
 RESMI_HEDEF = 22.0
 MEVCUT_FAIZ = 37.0
 
 st.title("🏛️ 2026 Türkiye Makroekonomik Strateji Matrisi")
-st.markdown(f"📡 **Anlık Veri:** 4 Nisan 2026 | **Dolar/TL:** {CANLI_DOLAR} | **Politika Faizi:** %{MEVCUT_FAIZ}")
+st.subheader(f"📊 Mevcut Durum: İlk Çeyrek (Ocak-Mart) Birikmiş Enflasyon: %{BAZ_ENFLASYON}")
 
-# --- 🕹️ YAN PANEL (TÜM DEĞİŞKENLER) ---
-st.sidebar.header("🕹️ Ekonomi Kumanda Masası")
+# --- 🕹️ 3. KONTROL PANELİ (SIDEBAR) ---
+st.sidebar.header("🕹️ Gelecek 9 Ayı Yönet")
+st.sidebar.info("Sliderları '0'da bırakırsan, yılın geri kalanında hiç ek enflasyon oluşmadığını varsayar.")
 
-with st.sidebar.expander("💵 Döviz ve Dışsal Şoklar", expanded=True):
-    kur = st.slider("Kur Artışı (%)", -5, 50, 10)
-    petrol = st.slider("Brent Petrol Şoku (%)", -20, 60, 5)
-    fed = st.slider("Fed Faiz Baskısı (%)", -5, 15, 3)
-    soklar = st.slider("Jeopolitik Riskler (%)", -10, 50, 5)
+# Slider başlangıç değerlerini 0 yapıyoruz ki temiz başlasın
+kur = st.sidebar.slider("Dolar Kuru Artışı (%)", -5, 50, 0)
+ucret = st.sidebar.slider("Yeni Maaş Zamları (%)", 0, 60, 0)
+mazot = st.sidebar.slider("Ek Mazot/Lojistik Zammı (%)", -10, 60, 0)
+faiz = st.sidebar.slider("MB Faiz Hamlesi (Puan)", -15, 15, 0)
+algi = st.sidebar.slider("Fiyat Algısı/Atalet (%)", 0, 40, 0)
+baz_puan_etkisi = st.sidebar.slider("Baz Etkisi (Matematiksel Puan)", -10, 10, 0)
 
-with st.sidebar.expander("👷 Ücret ve Maliyetler"):
-    ucret = st.slider("Ücret Zamları (%)", 0, 60, 20)
-    mazot = st.slider("Mazot/Nakliye Artışı (%)", -10, 60, 15)
-    gubre = st.slider("Gübre/Tohum (Tarım) (%)", 0, 80, 20)
-    araci = st.slider("Aracı/Komisyoncu Kârı (%)", 0, 50, 10)
-
-with st.sidebar.expander("🏛️ Kamu ve Psikoloji"):
-    fiyat_algisi = st.slider("Fiyat Algısı Bozulması (%)", 0, 40, 15)
-    vergi = st.slider("Vergi Artışları (Puan)", 0, 30, 5)
-    butce = st.slider("Bütçe Açığı Etkisi (%)", 0, 30, 5)
-    kira = st.slider("Kira/Konut Baskısı (%)", 0, 60, 15)
-    guven = st.select_slider("Kurumsal Güven", options=range(11), value=5)
-    baz = st.slider("Baz Etkisi (Puan)", -10, 10, 0)
-
-# --- 🧮 HESAP MOTORU ---
+# --- 🧮 4. HESAP MOTORU ---
+# Katsayılar nisan-aralık dönemini temsil eder
 e_kur = kur * 0.38
-e_mazot = mazot * 0.12
-e_gubre = gubre * 0.10
-e_araci = araci * 0.08
-e_algı = fiyat_algisi * 0.22
 e_ucret = ucret * 0.25
-e_vergi = vergi * 0.15
-e_butce = butce * 0.12
-e_kira = kira * 0.18
-e_fed = fed * 0.07
-e_guven = (5 - guven) * 0.85
-e_baz = baz * 1.0
-e_soklar = petrol * 0.15 + soklar * 0.10
+e_mazot = mazot * 0.12
+e_faiz = faiz * -0.18
+e_algi = algi * 0.22
+e_baz = baz_puan_etkisi * 1.0
 
-toplam_etki = e_kur + e_mazot + e_gubre + e_araci + e_algı + e_ucret + e_vergi + e_butce + e_kira + e_fed + e_guven + e_baz + e_soklar
-yil_sonu_final = BIRIKMIS_ENF + toplam_etki
+# Yeni eklenen enflasyon baskısı
+ek_baski = e_kur + e_ucret + e_mazot + e_faiz + e_algi + e_baz
+yil_sonu_tahmin = BAZ_ENFLASYON + ek_baski
 
-# --- 📊 DASHBOARD ---
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Yıl Sonu Tahmini", f"%{yil_sonu_final:.2f}", f"{yil_sonu_final - RESMI_HEDEF:.2f} Sapma", delta_color="inverse")
-c2.metric("Nisan-Aralık Etkisi", f"+%{toplam_etki:.2f}")
-c3.metric("Tahmini Reel Faiz", f"%{MEVCUT_FAIZ - yil_sonu_final:.1f}")
-c4.metric("Senaryo Doları", f"{CANLI_DOLAR * (1 + kur/100):.2f} TL")
+# --- 📊 5. ANA GÖSTERGELER (KIYASLAMALI) ---
+st.divider()
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    st.metric("🎯 Resmi Hedef", f"%{RESMI_HEDEF}")
+    st.caption("TCMB 2026 Yıl Sonu Hedefi")
+
+with c2:
+    # Renklendirme: Hedefin üzerindeyse kırmızı, altındaysa yeşil
+    delta_val = yil_sonu_tahmin - RESMI_HEDEF
+    st.metric("🔮 Sizin Tahmininiz", f"%{yil_sonu_tahmin:.2f}", f"{delta_val:.2f} Puan Fark", delta_color="inverse")
+    st.caption("Senaryonuza Göre Yıl Sonu")
+
+with c3:
+    st.metric("📈 Ek Enflasyon Yükü", f"+%{ek_baski:.2f}")
+    st.caption("Nisan-Aralık Tahmini Baskı")
 
 st.divider()
 
-# --- 📉 ETKİ ANALİZİ GRAFİĞİ ---
-st.subheader("🔍 Enflasyonu Tetikleyen Unsurların Dağılımı")
-chart_data = pd.DataFrame({
-    'Faktör': ['Kur', 'Ücret', 'Gıda/Tarım', 'Psikoloji', 'Kamu/Vergi', 'Kira', 'Güven/Baz', 'Dış Şoklar'],
-    'Katkı (Puan)': [e_kur, e_ucret, e_gida_toplam := (e_gubre + e_araci), e_algı, e_vergi + e_butce, e_kira, e_guven + e_baz, e_soklar + e_fed]
-}).set_index('Faktör')
+# --- 📝 6. DETAYLI ANALİZ ---
+col_left, col_right = st.columns(2)
 
-st.bar_chart(chart_data)
+with col_left:
+    st.write("### 🔩 Değişimlerin Faturası")
+    analiz_df = pd.DataFrame({
+        "Parametre": ["Kur", "Ücret", "Mazot", "Faiz", "Algı", "Baz Etkisi"],
+        "Katkı (Puan)": [e_kur, e_ucret, e_mazot, e_faiz, e_algi, e_baz]
+    })
+    st.bar_chart(analiz_df.set_index("Parametre"))
 
-# --- 📝 ANALİZ NOTLARI ---
-col_a, col_b = st.columns(2)
-with col_a:
-    st.info(f"📌 **Gerçekleşen Veri:** 2026'nın ilk 3 ayında (Ocak-Mart) enflasyon %{BIRIKMIS_ENF} olarak realize oldu. Yılın geri kalanında hedefe ulaşmak için alanın daralıyor.")
-with col_b:
-    if guven < 4:
-        st.error("🚨 **Güven Krizi:** Kurumsal güven düşük olduğu için para politikası etkisiz kalıyor. Psikolojik zamlar enflasyonu besliyor.")
-    elif yil_sonu_final <= RESMI_HEDEF:
-        st.success("🎯 **Hedef Uyumu:** Tebrikler! Tüm makro dengeleri gözeterek resmi hedefi yakaladın.")
+with col_right:
+    st.write("### 📋 Senaryo Özeti")
+    if yil_sonu_tahmin <= RESMI_HEDEF:
+        st.success(f"Tebrikler! Belirlediğiniz politikalarla enflasyonu %{RESMI_HEDEF} hedefinin altında tutabiliyorsunuz.")
+    else:
+        st.warning(f"Dikkat: Mevcut şartlarda enflasyon hedeften %{yil_sonu_tahmin - RESMI_HEDEF:.2f} puan sapıyor.")
+    
+    st.write(f"**Yeni Politika Faizi:** %{MEVCUT_FAIZ + faiz}")
+    st.write(f"**Reel Faiz Durumu:** %{(MEVCUT_FAIZ + faiz) - yil_sonu_tahmin:.2f}")
