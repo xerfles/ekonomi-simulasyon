@@ -6,11 +6,11 @@ from datetime import datetime
 # --- 📁 VERİ SAKLAMA ---
 DB_FILE = 'beklenti_havuzu.csv'
 
-def save_to_csv(profil, beklenti_9ay, toplam, dolar_artis, korku):
+def save_to_csv(isim, profil, beklenti_9ay, toplam, dolar_artis, korku):
     new_data = pd.DataFrame([[
         datetime.now().strftime("%Y-%m-%d %H:%M"), 
-        profil, beklenti_9ay, toplam, dolar_artis, korku
-    ]], columns=['tarih', 'profil', 'beklenti_9ay', 'toplam_yıl_sonu', 'dolar_artis_beklentisi', 'en_cok_korkulan'])
+        isim, profil, beklenti_9ay, toplam, dolar_artis, korku
+    ]], columns=['tarih', 'ad_soyad', 'profil', 'beklenti_9ay', 'toplam_yıl_sonu', 'dolar_artis_beklentisi', 'en_cok_korkulan'])
     
     if not os.path.isfile(DB_FILE):
         new_data.to_csv(DB_FILE, index=False)
@@ -42,6 +42,11 @@ inf_col3.success(f"🎯 **TCMB Yıl Sonu Hedefi:** %{TCMB_2026_HEDEF}")
 st.divider()
 
 # --- 🕹️ KENAR ÇUBUĞU ---
+st.sidebar.header("👤 Katılımcı Bilgileri")
+# Bot engelleme ve doğrulama için isim alanı
+user_name = st.sidebar.text_input("Adınız ve Soyadınız:", placeholder="Örn: Alper Furkan")
+
+st.sidebar.divider()
 st.sidebar.header("🎯 Senaryo Oluştur")
 user_profile = st.sidebar.selectbox("Sosyal Profiliniz:", ["Öğrenci", "Emekli", "Çalışan", "Kamu Personeli", "Esnaf"])
 
@@ -79,11 +84,15 @@ st.table(hist_df)
 
 st.divider()
 
+# Kayıt Butonu (İsim kontrolü ile)
 if st.button("🚀 Tahminimi Veri Havuzuna Gönder"):
-    save_to_csv(user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
-    st.success("Veriler başarıyla kaydedildi!")
+    if user_name.strip() == "":
+        st.error("Lütfen devam etmek için isminizi giriniz!")
+    else:
+        save_to_csv(user_name, user_profile, beklenti_9ay, toplam_yıl_sonu, dolar_artis, korku)
+        st.success(f"Teşekkürler {user_name}, tahminlerin başarıyla kaydedildi!")
 
-# --- 🛡️ YÖNETİCİ PANELİ (SAYFA ORTASINDA VE GENİŞ) ---
+# --- 🛡️ YÖNETİCİ PANELİ ---
 st.sidebar.divider()
 st.sidebar.subheader("🔐 Yönetici Erişimi")
 sifre = st.sidebar.text_input("Yönetici Şifresi", type="password")
@@ -94,7 +103,6 @@ if sifre == "alper2026":
     if os.path.exists(DB_FILE):
         df = pd.read_csv(DB_FILE)
         
-        # Üst Özet Kartları
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Toplam Katılım", f"{len(df)} Kişi")
         c2.metric("Ort. Enflasyon (9 Ay)", f"%{df['beklenti_9ay'].mean():.2f}")
@@ -102,11 +110,11 @@ if sifre == "alper2026":
         c4.metric("Ort. Dolar Artışı", f"%{df['dolar_artis_beklentisi'].mean():.2f}")
         
         st.write("---")
-        st.subheader("📋 Tüm Veritabanı (Geniş Görünüm)")
-        st.dataframe(df, use_container_width=True) # Tablo ekranı kaplar
+        st.subheader("📋 Tüm Katılımcı Verileri (Geniş Görünüm)")
+        st.dataframe(df, use_container_width=True) 
         
         st.write("---")
         st.subheader("📊 Grupların Beklenti Ortalamaları")
         st.bar_chart(df.groupby("profil")["toplam_yıl_sonu"].mean())
     else:
-        st.info("Sistemde henüz veri bulunmuyor.")
+        st.info("Henüz veri girişi yapılmadı.")
